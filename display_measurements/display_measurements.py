@@ -3,27 +3,28 @@
 
 import cv2
 import numpy as np
+from quantiser import Quantiser
 
-class Quantiser(object):
-    def __init__(self, num_colour=4):
-        self.num_colour = num_colour
-        self.divisor = 256 / num_colour
-        self.max_quantised_value = 255 / self.divisor
+# class Quantiser(object):
+#     def __init__(self, num_colour=4):
+#         self.num_colour = num_colour
+#         self.divisor = 256 / num_colour
+#         self.max_quantised_value = 255 / self.divisor
 
-    def quantise_pixel(self, val):
-        return ((val / self.divisor) * 255) / self.max_quantised_value
+#     def quantise_pixel(self, val):
+#         return ((val / self.divisor) * 255) / self.max_quantised_value
 
-    def quantise_image(self, image):
-        quantised_image = image.copy()
-        it = np.nditer(quantised_image,
-                       flags=['external_loop', 'buffered'],
-                       op_flags=['readwrite'],
-                       casting='safe')
+#     def quantise_image(self, image):
+#         quantised_image = image.copy()
+#         it = np.nditer(quantised_image,
+#                        flags=['external_loop', 'buffered'],
+#                        op_flags=['readwrite'],
+#                        casting='safe')
 
-        for p in it:
-            p[...] = map(self.quantise_pixel, p)
+#         for p in it:
+#             p[...] = map(self.quantise_pixel, p)
 
-        return quantised_image
+#         return quantised_image
 
 
 def write_measurements_to_image(quantiser, temp=None, humid=None):
@@ -49,7 +50,7 @@ def write_measurements_to_image(quantiser, temp=None, humid=None):
     # print("Ellapsed time: " + str(dt))
 
     e1 = cv2.getTickCount()
-    img_grey = q.quantise_image(img)
+    img_grey = quantiser.quantise_image(img)
     e2 = cv2.getTickCount()
     dt = (e2 - e1)/cv2.getTickFrequency()
     print("Ellapsed time: " + str(dt))
