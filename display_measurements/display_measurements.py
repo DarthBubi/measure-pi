@@ -8,13 +8,27 @@ from read_sensor_data import read_temp
 import cv2
 import numpy as np
 
+
 def scan_right_to_left(img):
+    """
+    Scan an image from right to left. This basicly mirrors the image.
+
+    :param img: the image to be scanned right to left
+    """
     it = np.nditer(img, flags=['external_loop'], op_flags=['readwrite'])
     for p in img:
         p[...] = p[::-1]
 
 
 def write_measurements_to_image(quantiser, temp=None, humid=None):
+    """
+    Writes the measured temperature and humidity to an image (represented as a numpy arra),
+    which can be sent to an eink display.
+
+    :param quantiser: a quantiser object to quantise the 8 bit image to a 2 bit image
+    :param temp: a list of temperatures
+    :param humid: a list of humidities
+    """
     img = np.full((600, 800, 1), 0, np.uint8)
     font = cv2.FONT_HERSHEY_DUPLEX
     pixel_v = 50
@@ -22,7 +36,7 @@ def write_measurements_to_image(quantiser, temp=None, humid=None):
     if temp is not None:
         for t in temp:
             text = "Room temperature: " + str(t) + " Celsius"
-            cv2.putText(img, text, (5, pixel_v), font, 1.5, 255, 4, cv2.CV_AA)
+            cv2.putText(img, text, (5, pixel_v), font, 1.5, 255, 5, cv2.CV_AA)
             pixel_v = pixel_v + 100
 
     img_grey = quantiser.quantise_image(img)

@@ -2,14 +2,20 @@
 # coding=utf-8
 
 from __future__ import division
-from time import sleep
-import re, os
+import re
 import RPi.GPIO as GPIO
 
-sensor_id = "28-000009aeb3f5"
-sensor_name = "/sys/bus/w1/devices/%s/w1_slave" % sensor_id
+SENSOR_ID = "28-000009aeb3f5"
+SENSOR_NAME = "/sys/bus/w1/devices/%s/w1_slave" % SENSOR_ID
+
 
 def read_temp(path):
+    """
+    Read the current temperature from the connected DS18B20 sensor
+
+    :param path: the path to the sensor
+    :return: the measured temperature
+    """
     temp = None
     with open(path, 'r') as file:
         line = file.readline()
@@ -17,20 +23,14 @@ def read_temp(path):
             line = file.readline()
             match = re.match(r"([0-9a-f]{2} ){9}t=([+-]?[0-9]+)", line)
             if match:
-                temp = round(float(match.group(2))/1000, 1)
+                temp = round(float(match.group(2)) / 1000, 1)
 
     return temp
 
 
 if __name__ == '__main__':
     GPIO.setwarnings(False)
-    # GPIO.setmode(GPIO.BOARD)
-    # GPIO.setup(pin_led, GPIO.OUT)
+    temperature = read_temp(SENSOR_NAME)
 
-    # while True:
-    temp = read_temp(sensor_name)
-
-    if temp is not None:
-        print("Room temperature is: " + str(temp) + " °C")
-        # sleep(1)
-
+    if temperature is not None:
+        print("Room temperature is: " + str(temperature) + " °C")
