@@ -103,6 +103,9 @@ ENV/
 # Numpy arrays
 *.npy
 
+# Generated cython code
+quantiser.c
+
 # Prerequisites
 *.d
 
