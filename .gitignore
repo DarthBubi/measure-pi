@@ -106,6 +106,9 @@ ENV/
 # Generated cython code
 quantiser.c
 
+# Compiled display executable
+eink
+
 # Prerequisites
 *.d
 
