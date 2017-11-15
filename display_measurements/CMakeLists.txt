@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 set(PROJECT_NAME eink)
 project(${PROJECT_NAME})
 
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++11 -O3)
 
 add_executable(eink
     src/eink.c
