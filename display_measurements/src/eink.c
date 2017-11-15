@@ -39,6 +39,15 @@ void digitalWrite(uint8_t pin, bool level)
   }
 }
 
+void ClearScreen(void)
+{
+  bool DeviceStatus;
+  
+  DeviceStatus = digitalRead(STATUS_PIN);
+  SpiExchangeByte(3); 
+  while(digitalRead(STATUS_PIN) == DeviceStatus);
+}
+
 void SendImage(size_t imgSize)
 {
   bool DeviceStatus;
@@ -57,7 +66,7 @@ void SendImage(size_t imgSize)
   DeviceStatus = !DeviceStatus;
   for (cnt0 = 0; cnt0 < FRAME_END_LEN; cnt0++)
   {
-    printf("Frame %d \n", cnt0);
+    /* printf("Frame %d \n", cnt0); */
     for (cnt1 = 0; cnt1 < imgSize; cnt1++)
     {
       data = gImage_image[cnt1];

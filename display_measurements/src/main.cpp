@@ -21,6 +21,8 @@ int main(int argc, char **argv)
   bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);
   bcm2835_gpio_set_pud(RPI_BPLUS_GPIO_J8_22, BCM2835_GPIO_PUD_UP);
 
+  std::cout << "Clearing screen..." << std::endl;
+  ClearScreen();
   std::cout << "Sending image to eink display..." << std::endl;
   SendImage(img.shape[0]);
   std::cout << "Sending complete." << std::endl;
