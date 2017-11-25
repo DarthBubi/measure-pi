@@ -2,11 +2,12 @@
 # coding=utf-8
 
 import sys
-sys.path.append("../measure")
+sys.path.append("/home/pi/projects/measure-pi-repo/measure")
 from quantiser import Quantiser
 from read_sensor_data import read_temp
 import cv2
 import numpy as np
+import itertools
 
 
 def scan_right_to_left(img):
@@ -31,12 +32,32 @@ def write_measurements_to_image(quantiser, temp=None, humid=None):
     """
     img = np.full((600, 800, 1), 0, np.uint8)
     font = cv2.FONT_HERSHEY_DUPLEX
-    pixel_v = 50
+    pixel_v = 75
 
-    if temp is not None:
-        for t in temp:
-            text = "Room temperature: " + str(t) + " Celsius"
-            cv2.putText(img, text, (5, pixel_v), font, 1.5, 255, 5, cv2.CV_AA)
+    if temp is None:
+        temp = []
+    if humid is None:
+        humid = []
+
+    for elem in itertools.izip_longest(temp, humid):
+        if elem[0] is not None:
+            text = "Indoor: " + str(elem[0]) + " C"
+            cv2.putText(img, text, (5, pixel_v), font, 2, 255, 5, cv2.CV_AA)
+            cv2.circle(img, (425, pixel_v - 40), 7, 255, 5)
+            pixel_v = pixel_v + 100
+        else:
+            text = "No indoor temperature available."
+            cv2.putText(img, text, (5, pixel_v), font, 1.6, 255, 5, cv2.CV_AA)
+            cv2.circle(img, (425, pixel_v - 40), 7, 255, 5)
+            pixel_v = pixel_v + 100
+
+        if elem[1] is not None:
+            text = "Indoor: " + str(elem[1]) + " % humidity"
+            cv2.putText(img, text, (5, pixel_v), font, 2, 255, 5, cv2.CV_AA)
+            pixel_v = pixel_v + 100
+        else:
+            text = "No indoor humidity available."
+            cv2.putText(img, text, (5, pixel_v), font, 1.6, 255, 5, cv2.CV_AA)
             pixel_v = pixel_v + 100
 
     img_grey = quantiser.quantise_image(img)
