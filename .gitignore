@@ -144,3 +144,6 @@ eink
 
 # VSCode settings
 .vscode/
+
+# PyCharm
+.idea/
