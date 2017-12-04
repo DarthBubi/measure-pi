@@ -17,7 +17,7 @@ def scan_right_to_left(img):
     :param img: the image to be scanned right to left
     """
     it = np.nditer(img, flags=['external_loop'], op_flags=['readwrite'])
-    for p in img:
+    for p in it:
         p[...] = p[::-1]
 
 
