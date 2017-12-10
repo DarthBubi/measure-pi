@@ -8,6 +8,8 @@ from read_sensor_data import read_temp
 import cv2
 import numpy as np
 import itertools
+import os
+import subprocess
 
 
 def scan_right_to_left(img):
@@ -71,9 +73,22 @@ def write_measurements_to_image(quantiser, temp=None, humid=None):
         np.save(file, img_grey)
 
 
+def send_image(program=None, arg=None):
+    path_prog = os.path.expanduser('~') + program if os.path.exists(os.path.expanduser('~') + program) else None
+    path_arg = os.path.expanduser('~') + arg if os.path.exists(os.path.expanduser('~') + arg) else None
+
+    if path_prog and path_arg is not None:
+        os.system("sudo " + path_prog + " " + path_arg)
+    else:
+        print("Program or image not found!")
+        print(path_prog)
+        print(path_arg)
+
+
 if __name__ == '__main__':
     sensor_id = "28-000009aeb3f5"
     sensor_name = "/sys/bus/w1/devices/%s/w1_slave" % sensor_id
     q = Quantiser()
     temp = [read_temp(sensor_name)]
     write_measurements_to_image(q, temp)
+    send_image("/projects/measure-pi-repo/display_measurements/eink", "/img.npy")
