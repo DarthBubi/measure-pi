@@ -9,7 +9,6 @@ import cv2
 import numpy as np
 import itertools
 import os
-import subprocess
 
 
 def scan_right_to_left(img):
