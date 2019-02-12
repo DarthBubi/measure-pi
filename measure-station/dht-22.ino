@@ -1,20 +1,15 @@
-#include "DHT.h"
-#define DHTPIN 13 // D7
-#define DHTTYPE DHT22
-DHT dht(DHTPIN, DHTTYPE);
-
-// InfluxDB declaration
-#include "InfluxDb.h"
-#define INFLUXDB_HOST "192.168.x.x"
-Influxdb influx(INFLUXDB_HOST);
-
+#include <DHTesp.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include "InfluxDb.h"
+#define INFLUXDB_HOST "192.168.x.x"
 
 const char *ssid = "YourSSID";
 const char *password = "YourPW";
-const int httpPort = 80;
 
+Influxdb influx(INFLUXDB_HOST);
+
+DHTesp dht;
 float dht_temperature = 0;
 float dht_humidity = 0;
 
@@ -55,8 +50,8 @@ String Float2String(float value)
 
 void sensorDHT()
 {
-  float h = dht.readHumidity();    //Read Humidity
-  float t = dht.readTemperature(); //Read Temperature
+  float h = dht.getHumidity();    //Read Humidity
+  float t = dht.getTemperature(); //Read Temperature
   dht_temperature = t;
   dht_humidity = h;
 
@@ -78,7 +73,7 @@ void sensorDHT()
 
 void webserver_root()
 {
-  String page_content ="<!DOCTYPE html><html>";
+  String page_content = "<!DOCTYPE html><html>";
   String colour_h, colour_te;
 
   if (dht_humidity > 60. || dht_humidity < 40)
@@ -130,12 +125,10 @@ void send_data_to_influxdb()
 void setup()
 {
   Serial.begin(9600); //Output to Serial at 9600 baud
-  pinMode(DHTPIN, INPUT);
   delay(10);
   starttime = millis(); // store the start time
-  dht.begin();          // Start DHT
-  delay(1000);
-  connectWifi(); // Start ConnecWifi
+  dht.setup(13, DHTesp::DHT22);
+  connectWifi();
   Serial.print("\n");
   Serial.println("ChipId: ");
   Serial.println(ESP.getChipId());
@@ -157,6 +150,6 @@ void loop()
     send_data_to_influxdb();
   }
 
-  // handle client connections 
+  // handle client connections
   server.handleClient();
 }
