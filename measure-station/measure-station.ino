@@ -10,8 +10,7 @@ const char *password = "YourPW";
 Influxdb influx(INFLUXDB_HOST);
 
 DHTesp dht;
-float dht_temperature = 0;
-float dht_humidity = 0;
+TempAndHumidity dht_val;
 
 ESP8266WebServer server(80);
 
@@ -50,23 +49,21 @@ String Float2String(float value)
 
 void sensorDHT()
 {
-  float h = dht.getHumidity();    //Read Humidity
-  float t = dht.getTemperature(); //Read Temperature
-  dht_temperature = t;
-  dht_humidity = h;
+  TempAndHumidity th = dht.getTempAndHumidity();
 
   // Check if valid number if non NaN (not a number) will be send.
-  if (isnan(t) || isnan(h))
+  if (isnan(th.temperature) || isnan(th.humidity))
   {
     Serial.println("DHT22 couldn’t be read");
   }
   else
   {
+    dht_val = th;
     Serial.print("Humidity    : ");
-    Serial.print(h);
+    Serial.print(dht_val.humidity);
     Serial.print(" %\n");
     Serial.print("Temperature : ");
-    Serial.print(t);
+    Serial.print(dht_val.temperature);
     Serial.println(" C");
   }
 }
@@ -76,12 +73,12 @@ void webserver_root()
   String page_content = "<!DOCTYPE html><html>";
   String colour_h, colour_te;
 
-  if (dht_humidity > 60. || dht_humidity < 40)
+  if (dht.isTooDry(dht_val.temperature, dht_val.humidity) || dht.isTooHumid(dht_val.temperature, dht_val.humidity))
     colour_h = red;
   else
     colour_h = green;
 
-  if (dht_temperature > 23. || dht_temperature < 20.)
+  if (dht.isTooCold(dht_val.temperature, dht_val.humidity) || dht.isTooHot(dht_val.temperature, dht_val.humidity))
     colour_te = red;
   else
     colour_te = green;
@@ -95,9 +92,10 @@ void webserver_root()
   page_content += "</style></head>";
 
   // Web Page Heading
-  page_content += "<body><h1>Measure Station Bedroom</h1>";
-  page_content += "<p>Temperature: " + Float2String(dht_temperature) + " °C <span class=\"dot temp_ind\"></span> </p>";
-  page_content += "<p>Humidity: " + Float2String(dht_humidity) + " % <span class=\"dot hum_ind\"></span> </p>";
+  page_content += "<body><h1>Measure Station Living Room</h1>";
+  page_content += "<p>Temperature: " + Float2String(dht_val.temperature) + " °C <span class=\"dot temp_ind\"></span> </p>";
+  page_content += "<p>Humidity: " + Float2String(dht_val.humidity) + " % <span class=\"dot hum_ind\"></span> </p>";
+  page_content += "<p>Dew point: " + Float2String(dht.computeDewPoint(dht_val.temperature, dht_val.humidity)) + " °C </p>";
   page_content += "</body></html>";
 
   server.send(200, "text/html; charset=utf-8", page_content);
@@ -107,14 +105,14 @@ void send_data_to_influxdb()
 {
   String device = "esp8266-";
   device += String(ESP.getChipId());
-  String node = "bedroom";
+  String node = "living_room";
 
   InfluxData data("indoor_temperature");
   data.addTag("node", node);
   data.addTag("device", device);
   data.addTag("sensor", "dht22");
-  data.addValue("temperature", dht_temperature);
-  data.addValue("humidity", dht_humidity);
+  data.addValue("temperature", dht_val.temperature);
+  data.addValue("humidity", dht_val.humidity);
   influx.prepare(data);
 
   boolean success = influx.write();
