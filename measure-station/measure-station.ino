@@ -1,5 +1,6 @@
 #include <DHTesp.h>
 #include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
 #include "InfluxDb.h"
 #define INFLUXDB_HOST "192.168.x.x"
@@ -122,7 +123,7 @@ void send_data_to_influxdb()
 
 void setup()
 {
-  Serial.begin(9600); //Output to Serial at 9600 baud
+  Serial.begin(115200);
   delay(10);
   starttime = millis(); // store the start time
   dht.setup(13, DHTesp::DHT22);
@@ -130,6 +131,11 @@ void setup()
   Serial.print("\n");
   Serial.println("ChipId: ");
   Serial.println(ESP.getChipId());
+
+  if (!MDNS.begin("measure-station-living-room"))
+    Serial.println("Error setting up mDNS");
+  else
+    Serial.println("mDNS started");
 
   server.on("/", webserver_root);
   server.begin();
