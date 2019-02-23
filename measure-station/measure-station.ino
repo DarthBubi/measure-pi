@@ -2,11 +2,13 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
+#include <PubSubClient.h>
 #include "InfluxDb.h"
 #define INFLUXDB_HOST "192.168.x.x"
 
 const char *ssid = "YourSSID";
 const char *password = "YourPW";
+const char *node = "living_room";
 
 Influxdb influx(INFLUXDB_HOST);
 
@@ -14,6 +16,10 @@ DHTesp dht;
 TempAndHumidity dht_val;
 
 ESP8266WebServer server(80);
+WiFiClient wifi_client;
+PubSubClient mqtt_client(wifi_client);
+String pub_topic, sub_topic;
+String mqtt_msg;
 
 unsigned long starttime;
 unsigned long sampletime_ms = 30000;
@@ -107,7 +113,6 @@ void send_data_to_influxdb()
 {
   String device = "esp8266-";
   device += String(ESP.getChipId());
-  String node = "living_room";
 
   InfluxData data("indoor_temperature");
   data.addTag("node", node);
@@ -119,7 +124,45 @@ void send_data_to_influxdb()
 
   boolean success = influx.write();
   delay(5000);
-  Serial.println("Wrote to InfluxDB with return code " + success);
+}
+
+void indoor_temperature_cb(char* topic, byte* payload, unsigned int length)
+{
+  char msg[length+1];
+
+  for (int i = 0; i < length; i++)
+    msg[i] = (char) payload[i];
+
+  msg[length] = '\0';
+  
+  if (strcmp(msg, "temperature") == 0)
+    mqtt_msg = Float2String(dht_val.temperature);
+  else if (strcmp(msg, "humidity") == 0)
+    mqtt_msg = Float2String(dht_val.humidity);
+  else
+  {
+    Serial.print("Request not valid. Got ");
+    Serial.println(msg);
+    mqtt_msg = "";
+  }
+}
+
+void reconnect()
+{
+  while (!mqtt_client.connected())
+  {
+    Serial.println("Reconnecting MQTT...");
+    if (!mqtt_client.connect("ESP8266Client"))
+    {
+      Serial.print("failed, rc=");
+      Serial.print(mqtt_client.state());
+      Serial.println(" retrying in 5 seconds");
+      delay(5000);
+    }
+  }
+
+  mqtt_client.subscribe(sub_topic.c_str());
+  Serial.println("MQTT Connected...");
 }
 
 void setup()
@@ -142,6 +185,11 @@ void setup()
   server.begin();
 
   influx.setDb("homesensordata");
+
+  mqtt_client.setServer(INFLUXDB_HOST, 1883);
+  mqtt_client.setCallback(indoor_temperature_cb);
+  pub_topic = "/home/measure/" + (String) node + "/value";
+  sub_topic = "/home/measure/" + (String) node;
 }
 
 void loop()
@@ -153,6 +201,16 @@ void loop()
     sensorDHT();          // getting temperature and humidity
     Serial.println("------------------------------");
     send_data_to_influxdb();
+  }
+
+  if (!mqtt_client.connected())
+    reconnect();
+  mqtt_client.loop();
+
+  if (strcmp(mqtt_msg.c_str(), "") != 0)
+  {
+    mqtt_client.publish(pub_topic.c_str(), mqtt_msg.c_str());
+    mqtt_msg = "";
   }
 
   // handle client connections
