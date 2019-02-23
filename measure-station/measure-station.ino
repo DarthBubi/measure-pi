@@ -23,6 +23,7 @@ const String green = "#0f0";
 
 void connectWifi()
 {
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
   Serial.print("Connecting ");
