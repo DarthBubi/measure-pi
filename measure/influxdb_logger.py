@@ -81,7 +81,7 @@ if __name__ == "__main__":
     client = InflxuDBLogger(args.device_name, args.sensor_type, args.node,
                             args.measurement, args.database, host=args.host, port=args.port)
 
-    logging.basicConfig(format='%(levelname)s %(asctime)s: %(message)s', level=logging.DEBUG)
+    logging.basicConfig(format='%(levelname)s %(asctime)s: %(message)s', level=logging.INFO)
     while True:
         start = time.time()
         client.log_temperature(sensor_name)
