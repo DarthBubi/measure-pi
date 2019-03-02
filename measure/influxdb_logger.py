@@ -2,6 +2,7 @@
 # coding=utf-8
 
 import argparse
+import influxdb.exceptions
 import logging
 import socket
 import time
@@ -47,7 +48,10 @@ class InflxuDBLogger:
         temperature = read_temp(sensor_id)
         if temperature is not None:
             data = self.construct_db_string(temperature)
-            self.influx_client.write_points(data)
+            try:
+                self.influx_client.write_points(data)
+            except influxdb.exceptions.InfluxDBServerError as err:
+                logging.error(err)
         else:
             logging.error("Error while reading temperature")
 
