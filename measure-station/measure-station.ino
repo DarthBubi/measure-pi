@@ -2,6 +2,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
+#include <JeVe_EasyOTA.h>
 #include <PubSubClient.h>
 #include "InfluxDb.h"
 #define INFLUXDB_HOST "192.168.x.x"
@@ -9,6 +10,9 @@
 const char *ssid = "YourSSID";
 const char *password = "YourPW";
 const char *node = "living_room";
+
+#define HOST_NAME "measure-station-bedroom"
+EasyOTA OTA(HOST_NAME);
 
 Influxdb influx(INFLUXDB_HOST);
 
@@ -27,7 +31,7 @@ unsigned long sampletime_ms = 30000;
 const String red = "#f00";
 const String green = "#0f0";
 
-void connectWifi()
+/* void connectWifi()
 {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -41,7 +45,7 @@ void connectWifi()
   Serial.println("WiFi connected");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-}
+} */
 
 String Float2String(float value)
 {
@@ -169,14 +173,17 @@ void setup()
 {
   Serial.begin(115200);
   delay(10);
+  OTA.onMessage([](const String& message, int line)
+  { Serial.println(message); });
+
   starttime = millis(); // store the start time
   dht.setup(13, DHTesp::DHT22);
-  connectWifi();
+  OTA.addAP(ssid, password);
   Serial.print("\n");
   Serial.println("ChipId: ");
   Serial.println(ESP.getChipId());
 
-  if (!MDNS.begin("measure-station-living-room"))
+  if (!MDNS.begin(HOST_NAME))
     Serial.println("Error setting up mDNS");
   else
     Serial.println("mDNS started");
@@ -194,6 +201,8 @@ void setup()
 
 void loop()
 {
+  OTA.loop();
+  
   // Checking if it is time to sample
   if ((millis() - starttime) > sampletime_ms)
   {
