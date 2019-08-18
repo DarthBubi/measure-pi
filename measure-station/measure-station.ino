@@ -18,6 +18,7 @@ Influxdb influx(INFLUXDB_HOST);
 
 DHTesp dht;
 TempAndHumidity dht_val;
+float dew_point;
 
 ESP8266WebServer server(80);
 WiFiClient wifi_client;
@@ -71,6 +72,7 @@ void sensorDHT()
   else
   {
     dht_val = th;
+    dew_point = dht.computeDewPoint(dht_val.temperature, dht_val.humidity);
     Serial.print("Humidity    : ");
     Serial.print(dht_val.humidity);
     Serial.print(" %\n");
@@ -124,6 +126,7 @@ void send_data_to_influxdb()
   data.addTag("sensor", "dht22");
   data.addValue("temperature", dht_val.temperature);
   data.addValue("humidity", dht_val.humidity);
+  data.addValue("dew_point", dew_point);
   influx.prepare(data);
 
   boolean success = influx.write();
