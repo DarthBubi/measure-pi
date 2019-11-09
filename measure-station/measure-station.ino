@@ -23,7 +23,7 @@ float dew_point;
 ESP8266WebServer server(80);
 WiFiClient wifi_client;
 PubSubClient mqtt_client(wifi_client);
-String pub_topic, sub_topic;
+String pub_topic_temp, pub_topic_humid, sub_topic;
 String mqtt_msg;
 
 unsigned long starttime;
@@ -143,14 +143,19 @@ void indoor_temperature_cb(char* topic, byte* payload, unsigned int length)
   msg[length] = '\0';
   
   if (strcmp(msg, "temperature") == 0)
+  {
     mqtt_msg = Float2String(dht_val.temperature);
+    mqtt_client.publish(pub_topic_temp.c_str(), mqtt_msg.c_str(), true);
+  }
   else if (strcmp(msg, "humidity") == 0)
+  {
     mqtt_msg = Float2String(dht_val.humidity);
+    mqtt_client.publish(pub_topic_humid.c_str(), mqtt_msg.c_str(), true);
+  }
   else
   {
     Serial.print("Request not valid. Got ");
     Serial.println(msg);
-    mqtt_msg = "";
   }
 }
 
@@ -169,7 +174,7 @@ void reconnect()
   }
 
   mqtt_client.subscribe(sub_topic.c_str());
-  Serial.println("MQTT Connected...");
+  Serial.println("MQTT connected.");
 }
 
 void setup()
@@ -198,8 +203,9 @@ void setup()
 
   mqtt_client.setServer(INFLUXDB_HOST, 1883);
   mqtt_client.setCallback(indoor_temperature_cb);
-  pub_topic = "/home/measure/" + (String) node + "/value";
-  sub_topic = "/home/measure/" + (String) node;
+  pub_topic_temp = "/home/measure/" + (String) node + "/temperature";
+  pub_topic_humid = "/home/measure/" + (String) node + "/humidity";
+  sub_topic = "/home/measure/" + (String) node + "/get";
 }
 
 void loop()
@@ -218,12 +224,6 @@ void loop()
   if (!mqtt_client.connected())
     reconnect();
   mqtt_client.loop();
-
-  if (strcmp(mqtt_msg.c_str(), "") != 0)
-  {
-    mqtt_client.publish(pub_topic.c_str(), mqtt_msg.c_str());
-    mqtt_msg = "";
-  }
 
   // handle client connections
   server.handleClient();
