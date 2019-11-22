@@ -12,7 +12,7 @@ from influxdb import InfluxDBClient
 from read_sensor_data import read_temp
 
 
-class InflxuDBLogger:
+class InfluxDBLogger:
 
     def __init__(self, device, sensor_type, node, measurement, database, host='localhost', port=8086, user=None, password=None):
         if user and password is not None:
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     sensor_id = args.sensor_id
     sensor_name = "/sys/bus/w1/devices/%s/w1_slave" % sensor_id
-    client = InflxuDBLogger(args.device_name, args.sensor_type, args.node,
+    client = InfluxDBLogger(args.device_name, args.sensor_type, args.node,
                             args.measurement, args.database, host=args.host, port=args.port)
 
     logging.basicConfig(format='%(levelname)s %(asctime)s: %(message)s', level=logging.INFO)
