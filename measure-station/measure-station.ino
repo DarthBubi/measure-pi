@@ -14,6 +14,20 @@ const char *node = "living_room";
 #define HOST_NAME "measure-station-bedroom"
 EasyOTA OTA(HOST_NAME);
 
+const char *node = "test";
+const char *host_name = "measure-station-test";
+
+namespace cfg
+{
+  char* ssid;
+  char* password;
+  char* node;
+  char* hostname;
+  char influxdb_host[STR_LEN];
+}
+
+
+EasyOTA OTA(HOST_NAME);
 Influxdb influx(INFLUXDB_HOST);
 
 DHTesp dht;
@@ -133,7 +147,7 @@ void send_data_to_influxdb()
   delay(5000);
 }
 
-void indoor_temperature_cb(char* topic, byte* payload, unsigned int length)
+void mqtt_callback(char* topic, byte* payload, unsigned int length)
 {
   char msg[length+1];
 
@@ -161,16 +175,12 @@ void indoor_temperature_cb(char* topic, byte* payload, unsigned int length)
 
 void reconnect()
 {
-  while (!mqtt_client.connected())
+  Serial.println("Reconnecting MQTT...");
+  if (!mqtt_client.connect(host_name))
   {
-    Serial.println("Reconnecting MQTT...");
-    if (!mqtt_client.connect("ESP8266Client"))
-    {
-      Serial.print("failed, rc=");
-      Serial.print(mqtt_client.state());
-      Serial.println(" retrying in 5 seconds");
-      delay(5000);
-    }
+    Serial.print("failed, rc=");
+    Serial.print(mqtt_client.state());
+    return;
   }
 
   mqtt_client.subscribe(sub_topic.c_str());
@@ -202,7 +212,7 @@ void setup()
   influx.setDb("homesensordata");
 
   mqtt_client.setServer(INFLUXDB_HOST, 1883);
-  mqtt_client.setCallback(indoor_temperature_cb);
+  mqtt_client.setCallback(mqtt_callback);
   pub_topic_temp = "/home/measure/" + (String) node + "/temperature";
   pub_topic_humid = "/home/measure/" + (String) node + "/humidity";
   sub_topic = "/home/measure/" + (String) node + "/get";
