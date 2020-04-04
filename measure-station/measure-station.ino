@@ -6,14 +6,10 @@
 #include <PubSubClient.h>
 #include "InfluxDb.h"
 #define INFLUXDB_HOST "192.168.x.x"
+#define HOST_NAME "measure-station-test"
 
 const char *ssid = "YourSSID";
 const char *password = "YourPW";
-const char *node = "living_room";
-
-#define HOST_NAME "measure-station-bedroom"
-EasyOTA OTA(HOST_NAME);
-
 const char *node = "test";
 const char *host_name = "measure-station-test";
 
@@ -23,7 +19,7 @@ namespace cfg
   char* password;
   char* node;
   char* hostname;
-  char influxdb_host[STR_LEN];
+  char* influxdb_host;
 }
 
 
