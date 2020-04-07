@@ -176,7 +176,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length)
   char msg[length+1];
 
   for (int i = 0; i < length; i++)
-    msg[i] = (char) payload[i];
+    msg[i] = static_cast<char>(payload[i]);
 
   msg[length] = '\0';
 
