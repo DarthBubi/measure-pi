@@ -1,4 +1,3 @@
-#include <ArduinoJson.h>
 #include <FS.h>
 #include <DHTesp.h>
 #include <ESP8266WiFi.h>
@@ -306,9 +305,12 @@ void loop()
       send_data_to_influxdb();
   }
 
-  if ((iotWebConf.getState() == IOTWEBCONF_STATE_ONLINE) && (!mqtt_client.connected()))
-    reconnect();
-  mqtt_client.loop();
+  if (cfg::mqtt_server[0] != '\0')
+  {
+    if ((iotWebConf.getState() == IOTWEBCONF_STATE_ONLINE) && (!mqtt_client.connected()))
+      reconnect();
+    mqtt_client.loop();
+  }
 
   if (need_reset)
   {
