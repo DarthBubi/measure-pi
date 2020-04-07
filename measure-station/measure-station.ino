@@ -1,4 +1,3 @@
-#include <FS.h>
 #include <DHTesp.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -12,6 +11,14 @@
 #define STATUS_PIN LED_BUILTIN
 #define CONFIG_PIN D2
 #define STR_LEN 128
+
+const char* html_root_header_w_style PROGMEM = "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" \
+                                               "<link rel=\"icon\" href=\"data:,\">"\
+                                               "<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}"\
+                                               ".dot {height: 20px; width: 20px; background-color: #fff; border-radius: 50%; display: inline-block;}";
+const char* html_root_header_end PROGMEM = "</style></head>";
+const char* html_root_body_config_button PROGMEM = "<a href=\"config\"><button type=\"button\">Config</button></a>";
+const char* html_root_body_end_tag PROGMEM = "</body></html>";
 
 const char intial_host_name[] = "measure-station-test";
 const char initial_pw[] = "test1234";
@@ -132,21 +139,18 @@ void webserver_root()
   else
     colour_te = green;
 
-  page_content += "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
-  page_content += "<link rel=\"icon\" href=\"data:,\">";
-  page_content += "<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}";
-  page_content += ".dot {height: 20px; width: 20px; background-color: #fff; border-radius: 50%; display: inline-block;}";
+  page_content += String(html_root_header_w_style);
   page_content += ".temp_ind {background-color: " + colour_te + "}";
   page_content += ".hum_ind {background-color: " + colour_h + "}";
-  page_content += "</style></head>";
+  page_content += String(html_root_header_end);
 
   // Web Page Heading
   page_content += "<body><h1>Measure Station " + node +  "</h1>";
   page_content += "<p>Temperature: " + Float2String(dht_val.temperature) + " °C <span class=\"dot temp_ind\"></span> </p>";
   page_content += "<p>Humidity: " + Float2String(dht_val.humidity) + " % <span class=\"dot hum_ind\"></span> </p>";
   page_content += "<p>Dew point: " + Float2String(dew_point) + " °C </p>";
-  page_content += "<a href=\"config\"><button type=\"button\">Config</button></a>";
-  page_content += "</body></html>";
+  page_content += String(html_root_body_config_button);
+  page_content += String(html_root_body_end_tag);
 
   server.send(200, "text/html; charset=utf-8", page_content);
 }
