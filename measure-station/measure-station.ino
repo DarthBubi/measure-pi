@@ -11,6 +11,7 @@
 #define STATUS_PIN LED_BUILTIN
 #define CONFIG_PIN D2
 #define STR_LEN 128
+#define NUMBER_LEN 32
 
 const char* html_root_header_w_style PROGMEM = "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" \
                                                "<link rel=\"icon\" href=\"data:,\">"\
@@ -31,7 +32,7 @@ namespace cfg
   char influxdb_host[STR_LEN];
   char influxdb_database[STR_LEN];
   char mqtt_server[STR_LEN];
-  bool disable_status_led;
+  char disable_status_led[NUMBER_LEN];
 }
 
 DHTesp dht;
@@ -49,7 +50,7 @@ IotWebConfParameter influxdb_host_param = IotWebConfParameter("InflufDB Host", "
 IotWebConfParameter influxdb_database_param = IotWebConfParameter("InfluxDB Database", "influxdb_database", cfg::influxdb_database, STR_LEN);
 IotWebConfParameter mqtt_server_param = IotWebConfParameter("MQTT Server", "mqtt_server", cfg::mqtt_server, STR_LEN);
 IotWebConfParameter hostname_param = IotWebConfParameter("Node (e.g. the room)", "node", cfg::node, STR_LEN);
-// IotWebConfParameter disable_status_led_param = IotWebConfParameter("Disable status LED", "disable_status_led", )
+IotWebConfParameter disable_status_led_param = IotWebConfParameter("Disable status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, "number", "0..1", NULL, "min='0' max='1' step='1'");
 
 String pub_topic_temp, pub_topic_humid, sub_topic;
 String mqtt_msg;
@@ -237,6 +238,7 @@ void setup()
   iotWebConf.addParameter(&influxdb_host_param);
   iotWebConf.addParameter(&influxdb_database_param);
   iotWebConf.addParameter(&mqtt_server_param);
+  iotWebConf.addParameter(&disable_status_led_param);
   iotWebConf.setConfigSavedCallback(&config_saved);
   iotWebConf.setupUpdateServer(&httpUpdater);
   iotWebConf.setWifiConnectionCallback(&wifi_connected);
@@ -250,6 +252,7 @@ void setup()
     cfg::influxdb_host[0] = '\0';
     cfg::influxdb_database[0] = '\0';
     cfg::mqtt_server[0] = '\0';
+    cfg::disable_status_led[0] = '0';
   }
   else
   {
@@ -267,6 +270,9 @@ void setup()
     pub_topic_temp = "/home/measure/" + node + "/temperature";
     pub_topic_humid = "/home/measure/" + node + "/humidity";
     sub_topic = "/home/measure/" + node + "/get";
+
+    if (atoi(cfg::disable_status_led) == 1)
+      iotWebConf.disableBlink();
   }
 
   starttime = millis(); // store the start time
