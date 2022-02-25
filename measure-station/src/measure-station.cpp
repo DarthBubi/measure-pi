@@ -63,7 +63,7 @@ Influxdb* influx;
 PubSubClient mqtt_client(wifi_client);
 IotWebConf iotWebConf(intial_host_name, &dns_server, &server, initial_pw, CONFIG_VERSION);
 iotwebconf::ParameterGroup settingsGroup = iotwebconf::ParameterGroup("settingsGroup", "Measure Station Settings");
-iotwebconf::TextParameter influxdb_host_param = iotwebconf::TextParameter("InflufDB Host", "influxdb_host", cfg::influxdb_host, STR_LEN);
+iotwebconf::TextParameter influxdb_host_param = iotwebconf::TextParameter("InfluxDB Host", "influxdb_host", cfg::influxdb_host, STR_LEN);
 iotwebconf::TextParameter influxdb_database_param = iotwebconf::TextParameter("InfluxDB Database", "influxdb_database", cfg::influxdb_database, STR_LEN);
 iotwebconf::TextParameter mqtt_server_param = iotwebconf::TextParameter("MQTT Server", "mqtt_server", cfg::mqtt_server, STR_LEN);
 iotwebconf::TextParameter hostname_param = iotwebconf::TextParameter("Node (e.g. the room)", "node", cfg::node, STR_LEN);
