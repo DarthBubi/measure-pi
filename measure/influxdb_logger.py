@@ -30,23 +30,23 @@ class InfluxDBLogger:
             self.sensor_type: str = sensor_type
             self.node: str = node
 
-    def construct_db_string(self, temperature: float):
-        jason_string = [
-            {
-                "measurement": self.measurement,
-                "tags": {
-                    "device": self.device,
-                    "node": self.node,
-                    "sensor": self.sensor_type
-                },
-                "time": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
-                "fields": {
-                    "temperature": temperature
+        def construct_db_string(self, temperature: float):
+            jason_string = [
+                {
+                    "measurement": self.measurement,
+                    "tags": {
+                        "device": self.device,
+                        "node": self.node,
+                        "sensor": self.sensor_type
+                    },
+                    "time": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+                    "fields": {
+                        "temperature": temperature
+                    }
                 }
-            }
-        ]
+            ]
 
-        return jason_string
+            return jason_string
 
         def log_temperature(self, sensor_id):
             temperature = read_temp(sensor_id)
