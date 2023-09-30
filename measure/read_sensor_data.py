@@ -1,7 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # coding=utf-8
 
-from __future__ import division
 import argparse
 import re
 import RPi.GPIO as GPIO
