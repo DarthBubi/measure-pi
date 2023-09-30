@@ -170,9 +170,8 @@ void send_data_to_influxdb()
   device += String(ESP.getChipId());
 
   InfluxData data("indoor_temperature");
-  // TODO: fix hack to replace one space
   String node = cfg::node;
-  node.setCharAt(node.indexOf(0x20), 0x5f);
+  node.replace(" ", "_"); // Replace all spaces with underscores
   data.addTag("node", node);
   data.addTag("device", device);
   data.addTag("sensor", "dht22");
