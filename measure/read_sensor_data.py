@@ -8,8 +8,8 @@ import RPi.GPIO as GPIO
 from logger import CsvLogger
 from datetime import datetime
 
-SENSOR_ID = "28-000009aeb3f5"
-SENSOR_NAME = "/sys/bus/w1/devices/%s/w1_slave" % SENSOR_ID
+SENSOR_ID = f"28-000009aeb3f5"
+SENSOR_NAME = f"/sys/bus/w1/devices/{SENSOR_ID}/w1_slave"
 
 
 def read_temp(path):

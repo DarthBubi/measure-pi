@@ -82,7 +82,7 @@ if __name__ == "__main__":
     args = parse_args()
 
     sensor_id = args.sensor_id
-    sensor_name = "/sys/bus/w1/devices/%s/w1_slave" % sensor_id
+    sensor_name = f"/sys/bus/w1/devices/{sensor_id}/w1_slave"
     client = InfluxDBLogger(args.device_name, args.sensor_type, args.node,
                             args.measurement, args.database, host=args.host, port=args.port)
 
