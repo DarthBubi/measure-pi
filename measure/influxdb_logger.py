@@ -12,56 +12,54 @@ from datetime import datetime
 from influxdb import InfluxDBClient
 from typing import Optional
 
-from .read_sensor_data import read_temp
+from read_sensor_data import read_temp
 
 
 class InfluxDBLogger:
+    def __init__(self, device: str, sensor_type: str, node: str, measurement: str, database: str, host: str = 'localhost', port: int = 8086, user: Optional[str] = None, password: Optional[str] = None) -> None:
+        if user and password is not None:
+            self.influx_client: InfluxDBClient = InfluxDBClient(
+                host, port, user, password, database)
+        else:
+            self.influx_client: InfluxDBClient = InfluxDBClient(host, port, database=database)
 
-    class InfluxDBLogger:
-        def __init__(self, device: str, sensor_type: str, node: str, measurement: str, database: str, host: str = 'localhost', port: int = 8086, user: Optional[str] = None, password: Optional[str] = None) -> None:
-            if user and password is not None:
-                self.influx_client: InfluxDBClient = InfluxDBClient(
-                    host, port, user, password, database)
-            else:
-                self.influx_client: InfluxDBClient = InfluxDBClient(host, port, database=database)
+        self.measurement: str = measurement
+        self.device: str = device
+        self.sensor_type: str = sensor_type
+        self.node: str = node
 
-            self.measurement: str = measurement
-            self.device: str = device
-            self.sensor_type: str = sensor_type
-            self.node: str = node
-
-        def construct_db_string(self, temperature: float):
-            jason_string = [
-                {
-                    "measurement": self.measurement,
-                    "tags": {
-                        "device": self.device,
-                        "node": self.node,
-                        "sensor": self.sensor_type
-                    },
-                    "time": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
-                    "fields": {
-                        "temperature": temperature
-                    }
+    def construct_db_string(self, temperature: float):
+        jason_string = [
+            {
+                "measurement": self.measurement,
+                "tags": {
+                    "device": self.device,
+                    "node": self.node,
+                    "sensor": self.sensor_type
+                },
+                "time": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+                "fields": {
+                    "temperature": temperature
                 }
-            ]
+            }
+        ]
 
-            return jason_string
+        return jason_string
 
-        def log_temperature(self, sensor_id):
-            temperature = read_temp(sensor_id)
-            if temperature:
-                data = self.construct_db_string(temperature)
-                try:
-                    self.influx_client.write_points(data)
-                except influxdb.exceptions.InfluxDBServerError as err:
-                    logging.error(f"InfluxDB server error: {err}")
-                except requests.exceptions.ConnectionError as err:
-                    logging.error(f"Connection error: {err}")
-                except Exception as err:
-                    logging.error(f"Unexpected error: {err}")
-            else:
-                logging.error("Error while reading temperature")
+    def log_temperature(self, sensor_id):
+        temperature = read_temp(sensor_id)
+        if temperature:
+            data = self.construct_db_string(temperature)
+            try:
+                self.influx_client.write_points(data)
+            except influxdb.exceptions.InfluxDBServerError as err:
+                logging.error(f"InfluxDB server error: {err}")
+            except requests.exceptions.ConnectionError as err:
+                logging.error(f"Connection error: {err}")
+            except Exception as err:
+                logging.error(f"Unexpected error: {err}")
+        else:
+            logging.error("Error while reading temperature")
 
 
 def parse_args():
