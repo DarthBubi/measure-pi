@@ -48,16 +48,20 @@ class InfluxDBLogger:
 
         return jason_string
 
-    def log_temperature(self, sensor_id):
-        temperature = read_temp(sensor_id)
-        if temperature is not None:
-            data = self.construct_db_string(temperature)
-            try:
-                self.influx_client.write_points(data)
-            except (influxdb.exceptions.InfluxDBServerError, requests.exceptions.ConnectionError) as err:
-                logging.error(err)
-        else:
-            logging.error("Error while reading temperature")
+        def log_temperature(self, sensor_id):
+            temperature = read_temp(sensor_id)
+            if temperature:
+                data = self.construct_db_string(temperature)
+                try:
+                    self.influx_client.write_points(data)
+                except influxdb.exceptions.InfluxDBServerError as err:
+                    logging.error(f"InfluxDB server error: {err}")
+                except requests.exceptions.ConnectionError as err:
+                    logging.error(f"Connection error: {err}")
+                except Exception as err:
+                    logging.error(f"Unexpected error: {err}")
+            else:
+                logging.error("Error while reading temperature")
 
 
 def parse_args():
