@@ -27,12 +27,16 @@ const bool debug_enabled = false;
 
 namespace cfg
 {
-  char* hostname;
-  char node[STR_LEN];
-  char influxdb_host[STR_LEN];
-  char influxdb_database[STR_LEN];
-  char mqtt_server[STR_LEN];
-  char disable_status_led[NUMBER_LEN];
+  char* hostname = NULL;
+  char node[STR_LEN] = "";
+  char influxdb_host[STR_LEN] = "";
+  char influxdb_database[STR_LEN] = "";
+  char mqtt_server[STR_LEN] = "";
+  char mqtt_user[STR_LEN] = "";
+  char mqtt_password[STR_LEN] = "";
+  char mqtt_temperature_topic[STR_LEN] = "";
+  char mqtt_humidity_topic[STR_LEN] = "";
+  char disable_status_led[NUMBER_LEN] = "0";
 }
 
 DHTesp dht;
@@ -44,11 +48,15 @@ ESP8266WebServer server(80);
 WiFiClient wifi_client;
 HTTPUpdateServer httpUpdater;
 Influxdb* influx;
-PubSubClient mqtt_client(wifi_client);
+PubSubClient* mqtt_client;
 IotWebConf iotWebConf(intial_host_name, &dns_server, &server, initial_pw, CONFIG_VERSION);
 IotWebConfParameter influxdb_host_param = IotWebConfParameter("InflufDB Host", "influxdb_host", cfg::influxdb_host, STR_LEN);
 IotWebConfParameter influxdb_database_param = IotWebConfParameter("InfluxDB Database", "influxdb_database", cfg::influxdb_database, STR_LEN);
 IotWebConfParameter mqtt_server_param = IotWebConfParameter("MQTT Server", "mqtt_server", cfg::mqtt_server, STR_LEN);
+IotWebConfParameter mqtt_user_param = IotWebConfParameter("MQTT User", "mqtt_user", cfg::mqtt_user, STR_LEN);
+IotWebConfParameter mqtt_password_param = IotWebConfParameter("MQTT Password", "mqtt_password", cfg::mqtt_password, STR_LEN);
+IotWebConfParameter mqtt_temperature_topic_param = IotWebConfParameter("MQTT Temperature Topic", "mqtt_temperature_topic", cfg::mqtt_temperature_topic, STR_LEN);
+IotWebConfParameter mqtt_humidity_topic_param = IotWebConfParameter("MQTT Humidity Topic", "mqtt_humidity_topic", cfg::mqtt_humidity_topic, STR_LEN);
 IotWebConfParameter hostname_param = IotWebConfParameter("Node (e.g. the room)", "node", cfg::node, STR_LEN);
 IotWebConfParameter disable_status_led_param = IotWebConfParameter("Disable status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, "number", "0..1", NULL, "min='0' max='1' step='1'");
 
@@ -188,12 +196,18 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length)
   if (strcmp(msg, "temperature") == 0)
   {
     mqtt_msg = Float2String(dht_val.temperature);
-    mqtt_client.publish(pub_topic_temp.c_str(), mqtt_msg.c_str(), true);
+    boolean success = mqtt_client->publish(pub_topic_temp.c_str(), mqtt_msg.c_str(), true);
+
+    if (!success)
+      Serial.println("publishing via mqtt failed.");
   }
   else if (strcmp(msg, "humidity") == 0)
   {
     mqtt_msg = Float2String(dht_val.humidity);
-    mqtt_client.publish(pub_topic_humid.c_str(), mqtt_msg.c_str(), true);
+    boolean success = mqtt_client->publish(pub_topic_humid.c_str(), mqtt_msg.c_str(), true);
+
+    if (!success)
+      Serial.println("publishing via mqtt failed.");
   }
   else
   {
@@ -205,14 +219,14 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length)
 void reconnect()
 {
   Serial.println("Reconnecting MQTT...");
-  if (!mqtt_client.connect(cfg::hostname))
+  if (!mqtt_client->connect(cfg::hostname, cfg::mqtt_user, cfg::mqtt_password))
   {
     Serial.print("failed, rc=");
-    Serial.print(mqtt_client.state());
+    Serial.println(mqtt_client->state());
     return;
   }
 
-  mqtt_client.subscribe(sub_topic.c_str());
+  mqtt_client->subscribe(sub_topic.c_str());
   Serial.println("MQTT connected.");
 }
 
@@ -238,6 +252,10 @@ void setup()
   iotWebConf.addParameter(&influxdb_host_param);
   iotWebConf.addParameter(&influxdb_database_param);
   iotWebConf.addParameter(&mqtt_server_param);
+  iotWebConf.addParameter(&mqtt_user_param);
+  iotWebConf.addParameter(&mqtt_password_param);
+  iotWebConf.addParameter(&mqtt_temperature_topic_param);
+  iotWebConf.addParameter(&mqtt_humidity_topic_param);
   iotWebConf.addParameter(&disable_status_led_param);
   iotWebConf.setConfigSavedCallback(&config_saved);
   iotWebConf.setupUpdateServer(&httpUpdater);
@@ -252,6 +270,10 @@ void setup()
     cfg::influxdb_host[0] = '\0';
     cfg::influxdb_database[0] = '\0';
     cfg::mqtt_server[0] = '\0';
+    cfg::mqtt_user[0] = '\0';
+    cfg::mqtt_password[0] = '\0';
+    cfg::mqtt_temperature_topic[0] = '\0';
+    cfg::mqtt_humidity_topic[0] = '\0';
     cfg::disable_status_led[0] = '0';
   }
   else
@@ -262,13 +284,14 @@ void setup()
     influx = new Influxdb(cfg::influxdb_host);
     influx->setDb(cfg::influxdb_database);
 
-    mqtt_client.setServer(cfg::mqtt_server, 1883);
-    mqtt_client.setCallback(mqtt_callback);
+    mqtt_client = new PubSubClient(wifi_client);
+    mqtt_client->setServer(cfg::mqtt_server, 1883);
+    mqtt_client->setCallback(mqtt_callback);
     // TODO: fix hack to replace one space
     String node = cfg::node;
     node.setCharAt(node.indexOf(0x20), 0x5f);
-    pub_topic_temp = "/home/measure/" + node + "/temperature";
-    pub_topic_humid = "/home/measure/" + node + "/humidity";
+    pub_topic_temp = cfg::mqtt_temperature_topic;
+    pub_topic_humid = cfg::mqtt_humidity_topic;
     sub_topic = "/home/measure/" + node + "/get";
 
     if (atoi(cfg::disable_status_led) == 1)
@@ -281,7 +304,7 @@ void setup()
   Serial.println("ChipId: ");
   Serial.println(ESP.getChipId());
 
-  if (!MDNS.begin(cfg::hostname))
+  if (!MDNS.begin(cfg::hostname,  WiFi.localIP()))
     Serial.println("Error setting up mDNS");
   else
     Serial.println("mDNS started");
@@ -296,7 +319,7 @@ void loop()
 {
   if (need_mdns_setup)
   {
-    if (!MDNS.begin(cfg::hostname))
+    if (!MDNS.begin(cfg::hostname, WiFi.localIP()))
       Serial.println("Error setting up mDNS");
     else
       Serial.println("mDNS started");
@@ -313,13 +336,28 @@ void loop()
     Serial.println("------------------------------");
     if (iotWebConf.getState() == IOTWEBCONF_STATE_ONLINE)
       send_data_to_influxdb();
-  }
 
-  if (cfg::mqtt_server[0] != '\0')
-  {
-    if ((iotWebConf.getState() == IOTWEBCONF_STATE_ONLINE) && (!mqtt_client.connected()))
-      reconnect();
-    mqtt_client.loop();
+    if (cfg::mqtt_server[0] != '\0')
+    {
+      if (iotWebConf.getState() == IOTWEBCONF_STATE_ONLINE && !mqtt_client->connected())
+      {
+        reconnect();
+      }
+
+      mqtt_msg = Float2String(dht_val.temperature);
+      boolean success = mqtt_client->publish(pub_topic_temp.c_str(), mqtt_msg.c_str(), true);
+
+      if (!success)
+        Serial.println("publishing temperature via mqtt failed.");
+
+      mqtt_msg = Float2String(dht_val.humidity);
+      success = mqtt_client->publish(pub_topic_humid.c_str(), mqtt_msg.c_str(), true);
+
+      if (!success)
+        Serial.println("publishing humidity via mqtt failed.");
+
+      mqtt_client->loop();
+    }
   }
 
   if (need_reset)
