@@ -10,24 +10,27 @@ import time
 
 from datetime import datetime
 from influxdb import InfluxDBClient
-from read_sensor_data import read_temp
+from typing import Optional
+
+from .read_sensor_data import read_temp
 
 
 class InfluxDBLogger:
 
-    def __init__(self, device, sensor_type, node, measurement, database, host='localhost', port=8086, user=None, password=None):
-        if user and password is not None:
-            self.influx_client = InfluxDBClient(
-                host, port, user, password, database)
-        else:
-            self.influx_client = InfluxDBClient(host, port, database=database)
+    class InfluxDBLogger:
+        def __init__(self, device: str, sensor_type: str, node: str, measurement: str, database: str, host: str = 'localhost', port: int = 8086, user: Optional[str] = None, password: Optional[str] = None) -> None:
+            if user and password is not None:
+                self.influx_client: InfluxDBClient = InfluxDBClient(
+                    host, port, user, password, database)
+            else:
+                self.influx_client: InfluxDBClient = InfluxDBClient(host, port, database=database)
 
-        self.measurement = measurement
-        self.device = device
-        self.sensor_type = sensor_type
-        self.node = node
+            self.measurement: str = measurement
+            self.device: str = device
+            self.sensor_type: str = sensor_type
+            self.node: str = node
 
-    def construct_db_string(self, temperature):
+    def construct_db_string(self, temperature: float):
         jason_string = [
             {
                 "measurement": self.measurement,
@@ -65,15 +68,18 @@ def parse_args():
     parser.add_argument('--port', type=int, required=False, default=8086,
                         help='port of InfluxDB http API')
     parser.add_argument('--device-name', type=str, required=False,
-                        default=socket.gethostname(), help='the devices name, defaults to hostname')
+                        default=socket.gethostname(), 
+                        help='the devices name, defaults to hostname')
     parser.add_argument('--sensor-type', type=str, required=True,
                         help='sensor type e.g. a DHT22 or DS18B20')
     parser.add_argument('--node', type=str, required=True,
                         help='a description of the devices purpose e.g. the location')
-    parser.add_argument('--measurement', type=str, required=True, help='')
+    parser.add_argument('--measurement', type=str, required=True,
+                         help='a measurement name')
     parser.add_argument('--database', type=str, required=True,
                         help='a InfluxDB database name')
-    parser.add_argument('--sensor-id', type=str, required=True)
+    parser.add_argument('--sensor-id', type=str, required=True,
+                         help='the id of the sensor (DS18B20) or the GPIO pin (DHT22)')
 
     return parser.parse_args()
 
