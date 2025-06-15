@@ -355,8 +355,12 @@ void loop()
       if (!success)
         Serial.println("publishing humidity via mqtt failed.");
 
-      mqtt_client->loop();
     }
+  }
+
+  if (cfg::mqtt_server[0] != '\0' && mqtt_client != nullptr)
+  {
+    mqtt_client->loop();
   }
 
   if (need_reset)
