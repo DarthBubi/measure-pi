@@ -1,15 +1,15 @@
 #include <DHTesp.h>
+#include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
-#include <ESP8266WebServer.h>
-#include <PubSubClient.h>
 #include <InfluxDb.h>
 #include <IotWebConf.h>
+#include <PubSubClient.h>
 #ifdef ESP8266
-# include <ESP8266HTTPUpdateServer.h>
+#include <ESP8266HTTPUpdateServer.h>
 #elif defined(ESP32)
 // For ESP32 IotWebConf provides a drop-in replacement for UpdateServer.
-# include <IotWebConfESP32HTTPUpdateServer.h>
+#include <IotWebConfESP32HTTPUpdateServer.h>
 #endif
 
 #define CONFIG_VERSION "measure-station-v2"
@@ -18,13 +18,13 @@
 #define STR_LEN 128
 #define NUMBER_LEN 32
 
-const char* html_root_header_w_style PROGMEM = "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" \
-                                               "<link rel=\"icon\" href=\"data:,\">"\
-                                               "<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}"\
+const char *html_root_header_w_style PROGMEM = "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+                                               "<link rel=\"icon\" href=\"data:,\">"
+                                               "<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}"
                                                ".dot {height: 20px; width: 20px; background-color: #fff; border-radius: 50%; display: inline-block;}";
-const char* html_root_header_end PROGMEM = "</style></head>";
-const char* html_root_body_config_button PROGMEM = "<a href=\"config\"><button type=\"button\">Config</button></a>";
-const char* html_root_body_end_tag PROGMEM = "</body></html>";
+const char *html_root_header_end PROGMEM = "</style></head>";
+const char *html_root_body_config_button PROGMEM = "<a href=\"config\"><button type=\"button\">Config</button></a>";
+const char *html_root_body_end_tag PROGMEM = "</body></html>";
 
 const char intial_host_name[] = "measure-station-test";
 const char initial_pw[] = "test1234";
@@ -32,7 +32,7 @@ const bool debug_enabled = false;
 
 namespace cfg
 {
-  char* hostname = NULL;
+  char *hostname = NULL;
   char node[STR_LEN] = "";
   char influxdb_host[STR_LEN] = "";
   char influxdb_database[STR_LEN] = "";
@@ -56,8 +56,8 @@ ESP8266HTTPUpdateServer httpUpdater;
 #elif defined(ESP32)
 HTTPUpdateServer httpUpdater;
 #endif
-Influxdb* influx;
-PubSubClient* mqtt_client;
+Influxdb *influx;
+PubSubClient *mqtt_client;
 IotWebConf iotWebConf(intial_host_name, &dns_server, &server, initial_pw, CONFIG_VERSION);
 iotwebconf::ParameterGroup influxdb_group = iotwebconf::ParameterGroup("InfluxDB", "InfluxDB Settings");
 iotwebconf::TextParameter influxdb_host_param = iotwebconf::TextParameter("InflufDB Host", "influxdb_host", cfg::influxdb_host, STR_LEN);
@@ -69,7 +69,9 @@ iotwebconf::PasswordParameter mqtt_password_param = iotwebconf::PasswordParamete
 iotwebconf::TextParameter mqtt_temperature_topic_param = iotwebconf::TextParameter("MQTT Temperature Topic", "mqtt_temperature_topic", cfg::mqtt_temperature_topic, STR_LEN);
 iotwebconf::TextParameter mqtt_humidity_topic_param = iotwebconf::TextParameter("MQTT Humidity Topic", "mqtt_humidity_topic", cfg::mqtt_humidity_topic, STR_LEN);
 iotwebconf::TextParameter hostname_param = iotwebconf::TextParameter("Node (e.g. the room)", "node", cfg::node, STR_LEN);
-iotwebconf::NumberParameter disable_status_led_param = iotwebconf::NumberParameter("Disable status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, "0" "0..1", "min='0' max='1' step='1'");
+iotwebconf::NumberParameter disable_status_led_param = iotwebconf::NumberParameter("Disable status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, "0"
+                                                                                                                                                                    "0..1",
+                                                                                   "min='0' max='1' step='1'");
 
 String pub_topic_temp, pub_topic_humid, sub_topic;
 String mqtt_msg;
@@ -83,15 +85,15 @@ const String red = "#f00";
 const String green = "#0f0";
 
 // TODO: needs to be finished
-void debug_out(const String& text, const int level, const bool linebreak)
+void debug_out(const String &text, const int level, const bool linebreak)
 {
-	if (debug_enabled)
+  if (debug_enabled)
   {
-		if (linebreak)
-			Serial.println(text);
-		else
-			Serial.print(text);
-	}
+    if (linebreak)
+      Serial.println(text);
+    else
+      Serial.print(text);
+  }
 }
 
 String Float2String(float value)
@@ -106,18 +108,18 @@ String Float2String(float value)
   return s;
 }
 
-void captialize(String& s)
+void captialize(String &s)
 {
   int a;
   int b = -1;
-  do{
-      a = b + 1;
-      b = s.indexOf(0x20, a);
-      String tmp = s.substring(a, b - a);
-      tmp[0] = toupper(tmp[0]);
-      s.replace(s.substring(a, b - a), tmp);
-  }
-  while(b != -1);
+  do
+  {
+    a = b + 1;
+    b = s.indexOf(0x20, a);
+    String tmp = s.substring(a, b - a);
+    tmp[0] = toupper(tmp[0]);
+    s.replace(s.substring(a, b - a), tmp);
+  } while (b != -1);
 }
 
 void sensorDHT()
@@ -165,7 +167,7 @@ void webserver_root()
   page_content += String(html_root_header_end);
 
   // Web Page Heading
-  page_content += "<body><h1>Measure Station " + node +  "</h1>";
+  page_content += "<body><h1>Measure Station " + node + "</h1>";
   page_content += "<p>Temperature: " + Float2String(dht_val.temperature) + " °C <span class=\"dot temp_ind\"></span> </p>";
   page_content += "<p>Humidity: " + Float2String(dht_val.humidity) + " % <span class=\"dot hum_ind\"></span> </p>";
   page_content += "<p>Dew point: " + Float2String(dew_point) + " °C </p>";
@@ -194,9 +196,9 @@ void send_data_to_influxdb()
   boolean success = influx->write();
 }
 
-void mqtt_callback(char* topic, byte* payload, unsigned int length)
+void mqtt_callback(char *topic, byte *payload, unsigned int length)
 {
-  char msg[length+1];
+  char msg[length + 1];
 
   for (unsigned int i = 0; i < length; i++)
     msg[i] = static_cast<char>(payload[i]);
@@ -270,13 +272,15 @@ void setup()
   iotWebConf.addParameterGroup(&mqtt_group);
   iotWebConf.addSystemParameter(&disable_status_led_param);
   iotWebConf.setConfigSavedCallback(&config_saved);
-  iotWebConf.setupUpdateServer([](const char* updatePath) { httpUpdater.setup(&server, updatePath); },
-    [](const char* userName, char* password) { httpUpdater.updateCredentials(userName, password); });
+  iotWebConf.setupUpdateServer([](const char *updatePath)
+                               { httpUpdater.setup(&server, updatePath); },
+                               [](const char *userName, char *password)
+                               { httpUpdater.updateCredentials(userName, password); });
   iotWebConf.setWifiConnectionCallback(&wifi_connected);
 
   cfg::hostname = iotWebConf.getThingName();
   bool valid_config = iotWebConf.init();
-  
+
   if (!valid_config)
   {
     cfg::node[0] = '\0';
@@ -317,14 +321,16 @@ void setup()
   Serial.println("ChipId: ");
   Serial.println(ESP.getChipId());
 
-  if (!MDNS.begin(cfg::hostname,  WiFi.localIP()))
+  if (!MDNS.begin(cfg::hostname, WiFi.localIP()))
     Serial.println("Error setting up mDNS");
   else
     Serial.println("mDNS started");
 
   server.on("/", webserver_root);
-  server.on("/config", []{iotWebConf.handleConfig();});
-  server.onNotFound([](){iotWebConf.handleNotFound();});
+  server.on("/config", []
+            { iotWebConf.handleConfig(); });
+  server.onNotFound([]()
+                    { iotWebConf.handleNotFound(); });
   server.begin();
 }
 
@@ -336,7 +342,7 @@ void loop()
       Serial.println("Error setting up mDNS");
     else
       Serial.println("mDNS started");
-    
+
     need_mdns_setup = false;
   }
   iotWebConf.doLoop();
@@ -368,7 +374,6 @@ void loop()
 
       if (!success)
         Serial.println("publishing humidity via mqtt failed.");
-
     }
   }
 
