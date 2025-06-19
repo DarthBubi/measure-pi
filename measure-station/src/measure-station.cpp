@@ -398,4 +398,5 @@ void loop()
 
   // handle client connections
   server.handleClient();
+  delay(1); // Yield CPU to reduce unnecessary cycles
 }
