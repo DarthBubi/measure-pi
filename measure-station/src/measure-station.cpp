@@ -5,9 +5,14 @@
 #include <PubSubClient.h>
 #include <InfluxDb.h>
 #include <IotWebConf.h>
-#include <IotWebConfCompatibility.h>
+#ifdef ESP8266
+# include <ESP8266HTTPUpdateServer.h>
+#elif defined(ESP32)
+// For ESP32 IotWebConf provides a drop-in replacement for UpdateServer.
+# include <IotWebConfESP32HTTPUpdateServer.h>
+#endif
 
-#define CONFIG_VERSION "meaure-station-v1"
+#define CONFIG_VERSION "measure-station-v2"
 #define STATUS_PIN LED_BUILTIN
 #define CONFIG_PIN D2
 #define STR_LEN 128
@@ -46,19 +51,25 @@ float dew_point;
 DNSServer dns_server;
 ESP8266WebServer server(80);
 WiFiClient wifi_client;
+#ifdef ESP8266
+ESP8266HTTPUpdateServer httpUpdater;
+#elif defined(ESP32)
 HTTPUpdateServer httpUpdater;
+#endif
 Influxdb* influx;
 PubSubClient* mqtt_client;
 IotWebConf iotWebConf(intial_host_name, &dns_server, &server, initial_pw, CONFIG_VERSION);
-IotWebConfParameter influxdb_host_param = IotWebConfParameter("InflufDB Host", "influxdb_host", cfg::influxdb_host, STR_LEN);
-IotWebConfParameter influxdb_database_param = IotWebConfParameter("InfluxDB Database", "influxdb_database", cfg::influxdb_database, STR_LEN);
-IotWebConfParameter mqtt_server_param = IotWebConfParameter("MQTT Server", "mqtt_server", cfg::mqtt_server, STR_LEN);
-IotWebConfParameter mqtt_user_param = IotWebConfParameter("MQTT User", "mqtt_user", cfg::mqtt_user, STR_LEN);
-IotWebConfParameter mqtt_password_param = IotWebConfParameter("MQTT Password", "mqtt_password", cfg::mqtt_password, STR_LEN);
-IotWebConfParameter mqtt_temperature_topic_param = IotWebConfParameter("MQTT Temperature Topic", "mqtt_temperature_topic", cfg::mqtt_temperature_topic, STR_LEN);
-IotWebConfParameter mqtt_humidity_topic_param = IotWebConfParameter("MQTT Humidity Topic", "mqtt_humidity_topic", cfg::mqtt_humidity_topic, STR_LEN);
-IotWebConfParameter hostname_param = IotWebConfParameter("Node (e.g. the room)", "node", cfg::node, STR_LEN);
-IotWebConfParameter disable_status_led_param = IotWebConfParameter("Disable status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, "number", "0..1", NULL, "min='0' max='1' step='1'");
+iotwebconf::ParameterGroup influxdb_group = iotwebconf::ParameterGroup("InfluxDB", "InfluxDB Settings");
+iotwebconf::TextParameter influxdb_host_param = iotwebconf::TextParameter("InflufDB Host", "influxdb_host", cfg::influxdb_host, STR_LEN);
+iotwebconf::TextParameter influxdb_database_param = iotwebconf::TextParameter("InfluxDB Database", "influxdb_database", cfg::influxdb_database, STR_LEN);
+iotwebconf::ParameterGroup mqtt_group = iotwebconf::ParameterGroup("MQTT", "MQTT Settings");
+iotwebconf::TextParameter mqtt_server_param = iotwebconf::TextParameter("MQTT Server", "mqtt_server", cfg::mqtt_server, STR_LEN);
+iotwebconf::TextParameter mqtt_user_param = iotwebconf::TextParameter("MQTT User", "mqtt_user", cfg::mqtt_user, STR_LEN);
+iotwebconf::PasswordParameter mqtt_password_param = iotwebconf::PasswordParameter("MQTT Password", "mqtt_password", cfg::mqtt_password, STR_LEN);
+iotwebconf::TextParameter mqtt_temperature_topic_param = iotwebconf::TextParameter("MQTT Temperature Topic", "mqtt_temperature_topic", cfg::mqtt_temperature_topic, STR_LEN);
+iotwebconf::TextParameter mqtt_humidity_topic_param = iotwebconf::TextParameter("MQTT Humidity Topic", "mqtt_humidity_topic", cfg::mqtt_humidity_topic, STR_LEN);
+iotwebconf::TextParameter hostname_param = iotwebconf::TextParameter("Node (e.g. the room)", "node", cfg::node, STR_LEN);
+iotwebconf::NumberParameter disable_status_led_param = iotwebconf::NumberParameter("Disable status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, "0" "0..1", "min='0' max='1' step='1'");
 
 String pub_topic_temp, pub_topic_humid, sub_topic;
 String mqtt_msg;
@@ -247,17 +258,20 @@ void setup()
 
   iotWebConf.setStatusPin(STATUS_PIN);
   iotWebConf.setConfigPin(CONFIG_PIN);
-  iotWebConf.addParameter(&hostname_param);
-  iotWebConf.addParameter(&influxdb_host_param);
-  iotWebConf.addParameter(&influxdb_database_param);
-  iotWebConf.addParameter(&mqtt_server_param);
-  iotWebConf.addParameter(&mqtt_user_param);
-  iotWebConf.addParameter(&mqtt_password_param);
-  iotWebConf.addParameter(&mqtt_temperature_topic_param);
-  iotWebConf.addParameter(&mqtt_humidity_topic_param);
-  iotWebConf.addParameter(&disable_status_led_param);
+  iotWebConf.addSystemParameter(&hostname_param);
+  influxdb_group.addItem(&influxdb_host_param);
+  influxdb_group.addItem(&influxdb_database_param);
+  iotWebConf.addParameterGroup(&influxdb_group);
+  mqtt_group.addItem(&mqtt_server_param);
+  mqtt_group.addItem(&mqtt_user_param);
+  mqtt_group.addItem(&mqtt_password_param);
+  mqtt_group.addItem(&mqtt_temperature_topic_param);
+  mqtt_group.addItem(&mqtt_humidity_topic_param);
+  iotWebConf.addParameterGroup(&mqtt_group);
+  iotWebConf.addSystemParameter(&disable_status_led_param);
   iotWebConf.setConfigSavedCallback(&config_saved);
-  iotWebConf.setupUpdateServer(&httpUpdater);
+  iotWebConf.setupUpdateServer([](const char* updatePath) { httpUpdater.setup(&server, updatePath); },
+    [](const char* userName, char* password) { httpUpdater.updateCredentials(userName, password); });
   iotWebConf.setWifiConnectionCallback(&wifi_connected);
 
   cfg::hostname = iotWebConf.getThingName();
@@ -333,12 +347,12 @@ void loop()
     starttime = millis(); // store the start time
     sensorDHT();          // getting temperature and humidity
     Serial.println("------------------------------");
-    if (iotWebConf.getState() == IOTWEBCONF_STATE_ONLINE)
+    if (iotWebConf.getState() == iotwebconf::NetworkState::OnLine)
       send_data_to_influxdb();
 
     if (cfg::mqtt_server[0] != '\0')
     {
-      if (iotWebConf.getState() == IOTWEBCONF_STATE_ONLINE && !mqtt_client->connected())
+      if (iotWebConf.getState() == iotwebconf::NetworkState::OnLine && !mqtt_client->connected())
       {
         reconnect();
       }
