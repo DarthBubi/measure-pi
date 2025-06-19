@@ -18,10 +18,19 @@
 #define STR_LEN 128
 #define NUMBER_LEN 32
 
-const char *html_root_header_w_style PROGMEM = "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-                                               "<link rel=\"icon\" href=\"data:,\">"
-                                               "<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}"
-                                               ".dot {height: 20px; width: 20px; background-color: #fff; border-radius: 50%; display: inline-block;}";
+const char *html_root_header_w_style PROGMEM =
+    "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+    "<link rel=\"icon\" href=\"data:,\">"
+    "<style>"
+    "body { background: #f6f8fa; margin: 0; padding: 0; }"
+    ".container { max-width: 400px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px 20px 20px 20px; }"
+    "h1 { font-size: 1.5em; margin-bottom: 0.5em; color: #222; }"
+    ".sensor-row { display: flex; align-items: center; justify-content: space-between; margin: 18px 0; }"
+    ".sensor-label { font-size: 1.1em; color: #555; }"
+    ".sensor-value { font-size: 2em; font-weight: bold; color: #222; }"
+    ".dot {height: 20px; width: 20px; border-radius: 50%; display: inline-block; margin-left: 10px; border: 1px solid #ccc;}"
+    ".temp_ind {background-color: ";
+
 const char *html_root_header_end PROGMEM = "</style></head>";
 const char *html_root_body_config_button PROGMEM = "<a href=\"config\"><button type=\"button\">Config</button></a>";
 const char *html_root_body_end_tag PROGMEM = "</body></html>";
@@ -162,16 +171,17 @@ void webserver_root()
     colour_te = green;
 
   page_content += String(html_root_header_w_style);
-  page_content += ".temp_ind {background-color: " + colour_te + "}";
-  page_content += ".hum_ind {background-color: " + colour_h + "}";
+  page_content += colour_te + ";}"; // .temp_ind
+  page_content += ".hum_ind {background-color: " + colour_h + ";}";
   page_content += String(html_root_header_end);
 
-  // Web Page Heading
-  page_content += "<body><h1>Measure Station " + node + "</h1>";
-  page_content += "<p>Temperature: " + Float2String(dht_val.temperature) + " °C <span class=\"dot temp_ind\"></span> </p>";
-  page_content += "<p>Humidity: " + Float2String(dht_val.humidity) + " % <span class=\"dot hum_ind\"></span> </p>";
-  page_content += "<p>Dew point: " + Float2String(dew_point) + " °C </p>";
+  page_content += "<body><div class=\"container\">";
+  page_content += "<h1>Measure Station " + node + "</h1>";
+  page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">🌡️ Temperature</span><span class=\"sensor-value\">" + Float2String(dht_val.temperature) + " °C <span class=\"dot temp_ind\"></span></span></div>";
+  page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">💧 Humidity</span><span class=\"sensor-value\">" + Float2String(dht_val.humidity) + " % <span class=\"dot hum_ind\"></span></span></div>";
+  page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">❄️ Dew point</span><span class=\"sensor-value\">" + Float2String(dew_point) + " °C</span></div>";
   page_content += String(html_root_body_config_button);
+  page_content += "</div>";
   page_content += String(html_root_body_end_tag);
 
   server.send(200, "text/html; charset=utf-8", page_content);
