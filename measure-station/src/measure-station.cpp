@@ -65,7 +65,7 @@ ESP8266HTTPUpdateServer httpUpdater;
 #elif defined(ESP32)
 HTTPUpdateServer httpUpdater;
 #endif
-Influxdb influx(cfg::influxdb_host);
+Influxdb* influx = nullptr;
 PubSubClient mqtt_client(wifi_client);
 IotWebConf iotWebConf(intial_host_name, &dns_server, &server, initial_pw, CONFIG_VERSION);
 iotwebconf::ParameterGroup influxdb_group = iotwebconf::ParameterGroup("InfluxDB", "InfluxDB Settings");
@@ -201,9 +201,14 @@ void send_data_to_influxdb()
   data.addValue("temperature", dht_val.temperature);
   data.addValue("humidity", dht_val.humidity);
   data.addValue("dew_point", dew_point);
-  influx.prepare(data);
+  influx->prepare(data);
 
-  boolean success = influx.write();
+  boolean success = influx->write();
+  if (!success)
+  {
+    Serial.println("Failed to write to InfluxDB");
+    Serial.println(influx->getLastErrorMessage());
+  }
 }
 
 void mqtt_callback(char *topic, byte *payload, unsigned int length)
@@ -308,7 +313,11 @@ void setup()
     Serial.println(String(cfg::node));
     Serial.println(String(cfg::influxdb_host));
     Serial.println(String(cfg::mqtt_server));
-    influx.setDb(cfg::influxdb_database);
+    if (influx) {
+      delete influx;
+    }
+    influx = new Influxdb(cfg::influxdb_host, 8086);
+    influx->setDb(cfg::influxdb_database);
     mqtt_client.setServer(cfg::mqtt_server, 1883);
     mqtt_client.setCallback(mqtt_callback);
     // TODO: fix hack to replace one space
