@@ -12,7 +12,7 @@
 #include <IotWebConfESP32HTTPUpdateServer.h>
 #endif
 
-#define CONFIG_VERSION "measure-station-v2"
+#define CONFIG_VERSION "measure-station-v2.1"
 #define STATUS_PIN LED_BUILTIN
 #define CONFIG_PIN D2
 #define STR_LEN 128
@@ -53,6 +53,9 @@ namespace cfg
   char disable_status_led[NUMBER_LEN] = "0";
 }
 
+static char ledStatusValues[][NUMBER_LEN] = { "0", "1" };
+static char ledStatusNames[][STR_LEN] = { "Enabled", "Disabled" };
+
 DHTesp dht;
 TempAndHumidity dht_val;
 float dew_point;
@@ -78,9 +81,9 @@ iotwebconf::PasswordParameter mqtt_password_param = iotwebconf::PasswordParamete
 iotwebconf::TextParameter mqtt_temperature_topic_param = iotwebconf::TextParameter("MQTT Temperature Topic", "mqtt_temperature_topic", cfg::mqtt_temperature_topic, STR_LEN);
 iotwebconf::TextParameter mqtt_humidity_topic_param = iotwebconf::TextParameter("MQTT Humidity Topic", "mqtt_humidity_topic", cfg::mqtt_humidity_topic, STR_LEN);
 iotwebconf::TextParameter hostname_param = iotwebconf::TextParameter("Node (e.g. the room)", "node", cfg::node, STR_LEN);
-iotwebconf::NumberParameter disable_status_led_param = iotwebconf::NumberParameter("Disable status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, "0"
-                                                                                                                                                                    "0..1",
-                                                                                   "min='0' max='1' step='1'");
+//iotwebconf::NumberParameter disable_status_led_param = iotwebconf::NumberParameter("Disable status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, "number", "0..1", "min='0' max='1' step='1'");
+iotwebconf::SelectParameter disable_status_led_param = iotwebconf::SelectParameter("Status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, (char*)ledStatusValues, (char*)ledStatusNames, sizeof(ledStatusValues) / NUMBER_LEN, STR_LEN);
+
 
 String pub_topic_temp, pub_topic_humid, sub_topic;
 String mqtt_msg;
@@ -369,7 +372,7 @@ void loop()
     starttime = millis(); // store the start time
     sensorDHT();          // getting temperature and humidity
     Serial.println("------------------------------");
-    if (iotWebConf.getState() == iotwebconf::NetworkState::OnLine)
+    if (iotWebConf.getState() == iotwebconf::OnLine)
       send_data_to_influxdb();
 
     if (cfg::mqtt_server[0] != '\0')
