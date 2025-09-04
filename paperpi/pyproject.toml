@@ -1,0 +1,15 @@
+[project]
+name = "paperpi"
+version = "0.1.0"
+description = "Displays values of measuring stations on an ePaper display"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "dotenv>=0.9.9",
+    "paho-mqtt>=2.1.0",
+    "papirus>=1.0.0",
+    "pillow>=11.3.0",
+    "python-dateutil>=2.9.0.post0",
+    "RPi.GPIO>=0.7.0",
+    "smbus>=1.1.post2",
+]
