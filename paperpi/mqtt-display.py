@@ -5,15 +5,14 @@ import argparse
 import datetime
 import os
 import sys
-import RPi.GPIO as GPIO
-import paho.mqtt.client as mqtt
-
-
-from papirus import Papirus
-from PIL import Image
-from PIL import ImageDraw
-from PIL import ImageFont
 from time import sleep
+from typing import Any
+
+import paho.mqtt.client as mqtt
+import RPi.GPIO as GPIO
+from paho.mqtt.properties import Properties
+from papirus import Papirus
+from PIL import Image, ImageDraw, ImageFont
 
 # Check EPD_SIZE is defined
 EPD_SIZE=0.0
@@ -64,7 +63,7 @@ if (os.path.exists(hatdir + '/product')) and (os.path.exists(hatdir + '/vendor')
 received_temp = received_humid = received_temp_b = received_humid_b = False
 temp_l = humid_l = temp_b = humid_b = ""
 
-def write_text(papirus, text, size):
+def write_text(papirus: Papirus, text: str, size: int):
 
     # initially set all white background
     image = Image.new('1', papirus.size, WHITE)
@@ -99,7 +98,7 @@ def write_text(papirus, text, size):
     papirus.display(image)
     papirus.partial_update()
 
-def on_connect(client, userdata, flags, reason_code, properties):
+def on_connect(client: mqtt.Client, userdata: Any, flags: int, reason_code: int, properties: Properties):
     print("Connected with result code "+str(reason_code))
 
     # Subscribing in on_connect() means that if we lose the connection and
@@ -109,7 +108,7 @@ def on_connect(client, userdata, flags, reason_code, properties):
                       ("/home/measure/bedroom/temperature", 1),
                       ("/home/measure/bedroom/humidity", 1)])
 
-def msg_cb(client, userdata, message):
+def msg_cb(client: mqtt.Client, userdata: Any, message: mqtt.MQTTMessage):
     global received_temp, received_humid, received_temp_b, received_humid_b, temp_l, humid_l, temp_b, humid_b
     if message.topic == "/home/measure/living_room/temperature":
         temp_l = message.payload.decode("utf-8")
