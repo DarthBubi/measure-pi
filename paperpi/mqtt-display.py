@@ -142,7 +142,7 @@ def on_connect(client: mqtt.Client, userdata: Any, flags, rc):
     # Topic template
     topic_template = "gladys/master/device/mqtt:{room}/feature/mqtt:{feature}_{room}/state"
     rooms = ["living_room", "bedroom", "kitchen"]
-    features = ["temperature", "humidity"]
+    features = ["temperature", "humidity", "dew_point"]
     for room in rooms:
         for feature in features:
             topic = topic_template.format(room=room, feature=feature)
@@ -206,7 +206,7 @@ if __name__ == "__main__":
     # State for last received values (using topic template)
     topic_template = "gladys/master/device/mqtt:{room}/feature/mqtt:{feature}_{room}/state"
     rooms = ["living_room", "bedroom", "kitchen"]
-    features = ["temperature", "humidity"]
+    features = ["temperature", "humidity", "dew_point"]
     last_values = {}
     for room in rooms:
         for feature in features:
@@ -234,9 +234,11 @@ if __name__ == "__main__":
             # Kitchen
             temp_topic = topic_template.format(room="kitchen", feature="temperature")
             humid_topic = topic_template.format(room="kitchen", feature="humidity")
-            text = "Kitchen\n:thermo:   {} °C\n:drop:   {} %".format(
+            dew_point_topic = topic_template.format(room="kitchen", feature="dew_point")
+            text = "Kitchen\n:thermo:   {} °C\n:drop:   {} %\n:water:   {} %".format(
                 format_value(last_values[temp_topic]),
-                format_value(last_values[humid_topic])
+                format_value(last_values[humid_topic]),
+                format_value(last_values[dew_point_topic])
             )
             write_text(papirus, text, SIZE)
             current_room = "kitchen"
@@ -244,9 +246,11 @@ if __name__ == "__main__":
             # Bedroom
             temp_topic = topic_template.format(room="bedroom", feature="temperature")
             humid_topic = topic_template.format(room="bedroom", feature="humidity")
-            text = "Bedroom\n:thermo:   {} °C\n:drop:   {} %".format(
+            dew_point_topic = topic_template.format(room="bedroom", feature="dew_point")
+            text = "Bedroom\n:thermo:   {} °C\n:drop:   {} %\n:water:   {} %".format(
                 format_value(last_values[temp_topic]),
-                format_value(last_values[humid_topic])
+                format_value(last_values[humid_topic]),
+                format_value(last_values[dew_point_topic])
             )
             write_text(papirus, text, SIZE)
             current_room = "bedroom"
@@ -254,9 +258,11 @@ if __name__ == "__main__":
             # Living Room
             temp_topic = topic_template.format(room="living_room", feature="temperature")
             humid_topic = topic_template.format(room="living_room", feature="humidity")
-            text = "Living Room\n:thermo:   {} °C\n:drop:   {} %".format(
+            dew_point_topic = topic_template.format(room="living_room", feature="dew_point")
+            text = "Living Room\n:thermo:   {} °C\n:drop:   {} %\n:water:   {} %".format(
                 format_value(last_values[temp_topic]),
-                format_value(last_values[humid_topic])
+                format_value(last_values[humid_topic]),
+                format_value(last_values[dew_point_topic])
             )
             write_text(papirus, text, SIZE)
             current_room = "living_room"
@@ -279,25 +285,31 @@ if __name__ == "__main__":
         if updated and current_room == "bedroom":
             temp_topic = topic_template.format(room="bedroom", feature="temperature")
             humid_topic = topic_template.format(room="bedroom", feature="humidity")
-            text = "Bedroom\n:thermo: {} °C\n:drop: {} %".format(
+            dew_point_topic = topic_template.format(room="bedroom", feature="dew_point")
+            text = "Bedroom\n:thermo: {} °C\n:drop: {} %\n:water: {} %".format(
                 format_value(last_values[temp_topic]),
-                format_value(last_values[humid_topic])
+                format_value(last_values[humid_topic]),
+                format_value(last_values[dew_point_topic])
             )
             write_text(papirus, text, SIZE)
         elif updated and current_room == "living_room":
             temp_topic = topic_template.format(room="living_room", feature="temperature")
             humid_topic = topic_template.format(room="living_room", feature="humidity")
-            text = "Living Room\n:thermo: {} °C\n:drop: {} %".format(
+            dew_point_topic = topic_template.format(room="living_room", feature="dew_point")
+            text = "Living Room\n:thermo: {} °C\n:drop: {} %\n:water: {} %".format(
                 format_value(last_values[temp_topic]),
-                format_value(last_values[humid_topic])
+                format_value(last_values[humid_topic]),
+                format_value(last_values[dew_point_topic])
             )
             write_text(papirus, text, SIZE)
         elif updated and current_room == "kitchen":
             temp_topic = topic_template.format(room="kitchen", feature="temperature")
             humid_topic = topic_template.format(room="kitchen", feature="humidity")
-            text = "Kitchen\n:thermo: {} °C\n:drop: {} %".format(
+            dew_point_topic = topic_template.format(room="kitchen", feature="dew_point")
+            text = "Kitchen\n:thermo: {} °C\n:drop: {} %\n:water: {} %".format(
                 format_value(last_values[temp_topic]),
-                format_value(last_values[humid_topic])
+                format_value(last_values[humid_topic]),
+                format_value(last_values[dew_point_topic])
             )
             write_text(papirus, text, SIZE)
 

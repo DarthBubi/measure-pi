@@ -12,7 +12,7 @@
 #include <IotWebConfESP32HTTPUpdateServer.h>
 #endif
 
-#define CONFIG_VERSION "measure-station-v2.1"
+#define CONFIG_VERSION "measure-station-v2.2"
 #define STATUS_PIN LED_BUILTIN
 #define CONFIG_PIN D2
 #define STR_LEN 128
@@ -51,6 +51,7 @@ namespace cfg
   char mqtt_temperature_topic[STR_LEN] = "";
   char mqtt_humidity_topic[STR_LEN] = "";
   char disable_status_led[NUMBER_LEN] = "0";
+  char mqtt_dew_point_topic[STR_LEN] = "";
 }
 
 static char ledStatusValues[][NUMBER_LEN] = { "0", "1" };
@@ -80,12 +81,13 @@ iotwebconf::TextParameter mqtt_user_param = iotwebconf::TextParameter("MQTT User
 iotwebconf::PasswordParameter mqtt_password_param = iotwebconf::PasswordParameter("MQTT Password", "mqtt_password", cfg::mqtt_password, STR_LEN);
 iotwebconf::TextParameter mqtt_temperature_topic_param = iotwebconf::TextParameter("MQTT Temperature Topic", "mqtt_temperature_topic", cfg::mqtt_temperature_topic, STR_LEN);
 iotwebconf::TextParameter mqtt_humidity_topic_param = iotwebconf::TextParameter("MQTT Humidity Topic", "mqtt_humidity_topic", cfg::mqtt_humidity_topic, STR_LEN);
+iotwebconf::TextParameter mqtt_dew_point_topic_param = iotwebconf::TextParameter("MQTT Dew Point Topic", "mqtt_dew_point_topic", cfg::mqtt_dew_point_topic, STR_LEN);
 iotwebconf::TextParameter hostname_param = iotwebconf::TextParameter("Node (e.g. the room)", "node", cfg::node, STR_LEN);
 //iotwebconf::NumberParameter disable_status_led_param = iotwebconf::NumberParameter("Disable status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, "number", "0..1", "min='0' max='1' step='1'");
 iotwebconf::SelectParameter disable_status_led_param = iotwebconf::SelectParameter("Status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, (char*)ledStatusValues, (char*)ledStatusNames, sizeof(ledStatusValues) / NUMBER_LEN, STR_LEN);
 
 
-String pub_topic_temp, pub_topic_humid, sub_topic;
+String pub_topic_temp, pub_topic_humid, pub_topic_dew_point, sub_topic;
 String mqtt_msg;
 
 unsigned long starttime;
@@ -239,6 +241,14 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
     if (!success)
       Serial.println("publishing via mqtt failed.");
   }
+  else if (strcmp(msg, "dew_point") == 0)
+  {
+    mqtt_msg = Float2String(dew_point);
+    boolean success = mqtt_client.publish(pub_topic_dew_point.c_str(), mqtt_msg.c_str(), true);
+
+    if (!success)
+      Serial.println("publishing via mqtt failed.");
+  }
   else
   {
     Serial.print("Request not valid. Got ");
@@ -287,6 +297,7 @@ void setup()
   mqtt_group.addItem(&mqtt_password_param);
   mqtt_group.addItem(&mqtt_temperature_topic_param);
   mqtt_group.addItem(&mqtt_humidity_topic_param);
+  mqtt_group.addItem(&mqtt_dew_point_topic_param);
   iotWebConf.addParameterGroup(&mqtt_group);
   iotWebConf.addSystemParameter(&disable_status_led_param);
   iotWebConf.setConfigSavedCallback(&config_saved);
@@ -310,6 +321,7 @@ void setup()
     cfg::mqtt_temperature_topic[0] = '\0';
     cfg::mqtt_humidity_topic[0] = '\0';
     cfg::disable_status_led[0] = '0';
+    cfg::mqtt_dew_point_topic[0] = '\0';
   }
   else
   {
@@ -328,6 +340,7 @@ void setup()
     node.setCharAt(node.indexOf(0x20), 0x5f);
     pub_topic_temp = cfg::mqtt_temperature_topic;
     pub_topic_humid = cfg::mqtt_humidity_topic;
+    pub_topic_dew_point = cfg::mqtt_dew_point_topic;
     sub_topic = "/home/measure/" + node + "/get";
 
     if (atoi(cfg::disable_status_led) == 1)
@@ -393,6 +406,12 @@ void loop()
 
       if (!success)
         Serial.println("publishing humidity via mqtt failed.");
+
+      mqtt_msg = Float2String(dew_point);
+      success = mqtt_client.publish(pub_topic_dew_point.c_str(), mqtt_msg.c_str(), true);
+
+      if (!success)
+        Serial.println("publishing dew point via mqtt failed.");
     }
   }
 
