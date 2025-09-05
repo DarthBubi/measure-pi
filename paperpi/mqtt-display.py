@@ -235,7 +235,7 @@ if __name__ == "__main__":
             temp_topic = topic_template.format(room="kitchen", feature="temperature")
             humid_topic = topic_template.format(room="kitchen", feature="humidity")
             dew_point_topic = topic_template.format(room="kitchen", feature="dew_point")
-            text = "Kitchen\n:thermo:   {} °C\n:drop:   {} %\n:water:   {} %".format(
+            text = "Kitchen\n:thermo:   {} °C\n:drop:   {} %\n:water:   {} °C".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic]),
                 format_value(last_values[dew_point_topic])
@@ -247,7 +247,7 @@ if __name__ == "__main__":
             temp_topic = topic_template.format(room="bedroom", feature="temperature")
             humid_topic = topic_template.format(room="bedroom", feature="humidity")
             dew_point_topic = topic_template.format(room="bedroom", feature="dew_point")
-            text = "Bedroom\n:thermo:   {} °C\n:drop:   {} %\n:water:   {} %".format(
+            text = "Bedroom\n:thermo:   {} °C\n:drop:   {} %\n:water:   {} °C".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic]),
                 format_value(last_values[dew_point_topic])
@@ -259,7 +259,7 @@ if __name__ == "__main__":
             temp_topic = topic_template.format(room="living_room", feature="temperature")
             humid_topic = topic_template.format(room="living_room", feature="humidity")
             dew_point_topic = topic_template.format(room="living_room", feature="dew_point")
-            text = "Living Room\n:thermo:   {} °C\n:drop:   {} %\n:water:   {} %".format(
+            text = "Living Room\n:thermo:   {} °C\n:drop:   {} %\n:water:   {} °C".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic]),
                 format_value(last_values[dew_point_topic])
@@ -286,7 +286,7 @@ if __name__ == "__main__":
             temp_topic = topic_template.format(room="bedroom", feature="temperature")
             humid_topic = topic_template.format(room="bedroom", feature="humidity")
             dew_point_topic = topic_template.format(room="bedroom", feature="dew_point")
-            text = "Bedroom\n:thermo: {} °C\n:drop: {} %\n:water: {} %".format(
+            text = "Bedroom\n:thermo: {} °C\n:drop: {} %\n:water: {} °C".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic]),
                 format_value(last_values[dew_point_topic])
@@ -296,7 +296,7 @@ if __name__ == "__main__":
             temp_topic = topic_template.format(room="living_room", feature="temperature")
             humid_topic = topic_template.format(room="living_room", feature="humidity")
             dew_point_topic = topic_template.format(room="living_room", feature="dew_point")
-            text = "Living Room\n:thermo: {} °C\n:drop: {} %\n:water: {} %".format(
+            text = "Living Room\n:thermo: {} °C\n:drop: {} %\n:water: {} °C".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic]),
                 format_value(last_values[dew_point_topic])
@@ -306,7 +306,7 @@ if __name__ == "__main__":
             temp_topic = topic_template.format(room="kitchen", feature="temperature")
             humid_topic = topic_template.format(room="kitchen", feature="humidity")
             dew_point_topic = topic_template.format(room="kitchen", feature="dew_point")
-            text = "Kitchen\n:thermo: {} °C\n:drop: {} %\n:water: {} %".format(
+            text = "Kitchen\n:thermo: {} °C\n:drop: {} %\n:water: {} °C".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic]),
                 format_value(last_values[dew_point_topic])
