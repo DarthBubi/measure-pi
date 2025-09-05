@@ -51,12 +51,12 @@ SW4 = 19
 SW5 = 26
 
 # Check for HAT, and if detected redefine SW1 .. SW5
-if (os.path.exists(hatdir + '/product')) and (os.path.exists(hatdir + '/vendor')) :
+if (os.path.exists(hatdir + '/product')) and (os.path.exists(hatdir + '/vendor')):
    with open(hatdir + '/product') as f :
       prod = f.read()
    with open(hatdir + '/vendor') as f :
       vend = f.read()
-   if (prod.find('PaPiRus ePaper HAT') == 0) and (vend.find('Pi Supply') == 0) :
+   if (prod.find('PaPiRus ePaper HAT') == 0) and (vend.find('Pi Supply') == 0):
        # Papirus HAT detected
        SW1 = 16
        SW2 = 26
@@ -64,13 +64,13 @@ if (os.path.exists(hatdir + '/product')) and (os.path.exists(hatdir + '/vendor')
        SW4 = 21
        SW5 = -1
 
-def format_value(val):
+def format_value(val: Any) -> str:
     try:
         return f"{round(float(val), 1):.1f}"
     except (ValueError, TypeError):
-        return val
+        return str(val)
 
-def write_text(papirus: Papirus, text: str, size: int):
+def write_text(papirus: Papirus, text: str, size: int) -> None:
     # Track number of partial updates
     if not hasattr(write_text, "partial_count"):
         write_text.partial_count = 0
@@ -138,7 +138,7 @@ def write_text(papirus: Papirus, text: str, size: int):
     else:
         papirus.partial_update()
 
-def on_connect(client: mqtt.Client, userdata: Any, flags, rc):
+def on_connect(client: mqtt.Client, userdata: Any, flags, rc: int) -> None:
     print("Connected with result code " + str(rc))
     # Topic template
     topic_template = "gladys/master/device/mqtt:{room}/feature/mqtt:{feature}_{room}/state"
@@ -149,10 +149,10 @@ def on_connect(client: mqtt.Client, userdata: Any, flags, rc):
             topic = topic_template.format(room=room, feature=feature)
             client.subscribe(topic, 1)
 
-def msg_cb(client: mqtt.Client, userdata: Any, message: mqtt.MQTTMessage):
+def msg_cb(client: mqtt.Client, userdata: Any, message: mqtt.MQTTMessage) -> None:
     userdata['msg_queue'].put((message.topic, message.payload.decode("utf-8")))
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='MQTT display')
     parser.add_argument('--rotation', type=int, required=False,
                         default='0',
@@ -175,7 +175,7 @@ def get_feature_icon(feature: str) -> str:
     }
     return icon.get(feature, "")
 
-def update_room_display(room: str, last_values: dict, papirus: Papirus):
+def update_room_display(room: str, last_values: dict[str, str], papirus: Papirus) -> None:
     topic_template = "gladys/master/device/mqtt:{room}/feature/mqtt:{feature}_{room}/state"
     features = ["temperature", "humidity", "dew_point"]
     text = "{}\n".format(' '.join([w.capitalize() for w in room.split('_')]))
@@ -205,8 +205,8 @@ if __name__ == "__main__":
     write_text(papirus, "Ready... SW1 + SW2 to exit.", SIZE)
 
     # Thread-safe queue for messages
-    msg_queue = queue.Queue()
-    userdata = {'msg_queue': msg_queue}
+    msg_queue: queue.Queue[tuple[str, str]] = queue.Queue()
+    userdata: dict[str, Any] = {'msg_queue': msg_queue}
 
     mqtt_host = os.getenv("MQTT_HOST", "localhost")
     mqtt_port = int(os.getenv("MQTT_PORT", "1883"))
@@ -230,7 +230,7 @@ if __name__ == "__main__":
     topic_template = "gladys/master/device/mqtt:{room}/feature/mqtt:{feature}_{room}/state"
     rooms = ["living_room", "bedroom", "kitchen"]
     features = ["temperature", "humidity", "dew_point"]
-    last_values = {}
+    last_values: dict[str, str] = {}
     for room in rooms:
         for feature in features:
             topic = topic_template.format(room=room, feature=feature)
