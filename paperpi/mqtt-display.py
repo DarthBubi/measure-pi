@@ -176,7 +176,7 @@ if __name__ == "__main__":
 
     # State for last received values (using topic template)
     topic_template = "gladys/master/device/mqtt:{room}/feature/mqtt:{feature}_{room}/state"
-    rooms = ["living_room", "bedroom"]
+    rooms = ["living_room", "bedroom", "kitchen"]
     features = ["temperature", "humidity"]
     last_values = {}
     for room in rooms:
