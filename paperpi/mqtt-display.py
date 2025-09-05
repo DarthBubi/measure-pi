@@ -67,6 +67,12 @@ if (os.path.exists(hatdir + '/product')) and (os.path.exists(hatdir + '/vendor')
 received_temp = received_humid = received_temp_b = received_humid_b = False
 temp_l = humid_l = temp_b = humid_b = ""
 
+def format_value(val):
+    try:
+        return f"{round(float(val), 1):.1f}"
+    except (ValueError, TypeError):
+        return val
+
 def write_text(papirus: Papirus, text: str, size: int):
 
     # initially set all white background
@@ -200,8 +206,8 @@ if __name__ == "__main__":
             temp_topic = topic_template.format(room="kitchen", feature="temperature")
             humid_topic = topic_template.format(room="kitchen", feature="humidity")
             text = "Kitchen\nTemp: {} °C\nHumidity: {} %".format(
-                last_values[temp_topic],
-                last_values[humid_topic]
+                format_value(last_values[temp_topic]),
+                format_value(last_values[humid_topic])
             )
             write_text(papirus, text, SIZE)
             current_room = "kitchen"
@@ -210,8 +216,8 @@ if __name__ == "__main__":
             temp_topic = topic_template.format(room="bedroom", feature="temperature")
             humid_topic = topic_template.format(room="bedroom", feature="humidity")
             text = "Bedroom\nTemp: {} °C\nHumidity: {} %".format(
-                last_values[temp_topic],
-                last_values[humid_topic]
+                format_value(last_values[temp_topic]),
+                format_value(last_values[humid_topic])
             )
             write_text(papirus, text, SIZE)
             current_room = "bedroom"
@@ -220,8 +226,8 @@ if __name__ == "__main__":
             temp_topic = topic_template.format(room="living_room", feature="temperature")
             humid_topic = topic_template.format(room="living_room", feature="humidity")
             text = "Living Room\nTemp: {} °C\nHumidity: {} %".format(
-                last_values[temp_topic],
-                last_values[humid_topic]
+                format_value(last_values[temp_topic]),
+                format_value(last_values[humid_topic])
             )
             write_text(papirus, text, SIZE)
             current_room = "living_room"
@@ -245,24 +251,24 @@ if __name__ == "__main__":
             temp_topic = topic_template.format(room="bedroom", feature="temperature")
             humid_topic = topic_template.format(room="bedroom", feature="humidity")
             text = "Bedroom\nTemp: {} °C\nHumidity: {} %".format(
-                last_values[temp_topic],
-                last_values[humid_topic]
+                format_value(last_values[temp_topic]),
+                format_value(last_values[humid_topic])
             )
             write_text(papirus, text, SIZE)
         elif updated and current_room == "living_room":
             temp_topic = topic_template.format(room="living_room", feature="temperature")
             humid_topic = topic_template.format(room="living_room", feature="humidity")
             text = "Living Room\nTemp: {} °C\nHumidity: {} %".format(
-                last_values[temp_topic],
-                last_values[humid_topic]
+                format_value(last_values[temp_topic]),
+                format_value(last_values[humid_topic])
             )
             write_text(papirus, text, SIZE)
         elif updated and current_room == "kitchen":
             temp_topic = topic_template.format(room="kitchen", feature="temperature")
             humid_topic = topic_template.format(room="kitchen", feature="humidity")
             text = "Kitchen\nTemp: {} °C\nHumidity: {} %".format(
-                last_values[temp_topic],
-                last_values[humid_topic]
+                format_value(last_values[temp_topic]),
+                format_value(last_values[humid_topic])
             )
             write_text(papirus, text, SIZE)
 
