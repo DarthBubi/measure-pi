@@ -64,9 +64,6 @@ if (os.path.exists(hatdir + '/product')) and (os.path.exists(hatdir + '/vendor')
        SW4 = 21
        SW5 = -1
 
-received_temp = received_humid = received_temp_b = received_humid_b = False
-temp_l = humid_l = temp_b = humid_b = ""
-
 def format_value(val):
     try:
         return f"{round(float(val), 1):.1f}"
@@ -74,7 +71,10 @@ def format_value(val):
         return val
 
 def write_text(papirus: Papirus, text: str, size: int):
-    # initially set all white background
+    # Track number of partial updates
+    if not hasattr(write_text, "partial_count"):
+        write_text.partial_count = 0
+
     image = Image.new('1', papirus.size, WHITE)
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf', size)
@@ -87,7 +87,6 @@ def write_text(papirus: Papirus, text: str, size: int):
         words = raw_line.split()
         current_line = ""
         for word in words:
-            # If there is space on line add the word to it
             if (len(current_line) + len(word)) < line_size:
                 current_line += (" " if current_line else "") + word
             else:
@@ -95,12 +94,16 @@ def write_text(papirus: Papirus, text: str, size: int):
                 current_line = word
         text_lines.append(current_line)
 
-    # Draw each line
     for i, l in enumerate(text_lines):
         draw.text((0, ((size*(i+1))-size)), l, font=font, fill=BLACK)
 
     papirus.display(image)
-    papirus.partial_update()
+    write_text.partial_count += 1
+    if write_text.partial_count >= 10:
+        papirus.update()
+        write_text.partial_count = 0
+    else:
+        papirus.partial_update()
 
 def on_connect(client: mqtt.Client, userdata: Any, flags, rc):
     print("Connected with result code " + str(rc))
