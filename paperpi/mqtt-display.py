@@ -274,10 +274,10 @@ if __name__ == "__main__":
                 if topic in last_values:
                     last_values[topic] = value
                     
-                    if current_room == "bedroom" and topic.startswith("gladys/master/device/mqtt:bedroom/feature/"):
-                        updated = True
-                    elif current_room == "living_room" and topic.startswith("gladys/master/device/mqtt:living_room/feature/"):
-                        updated = True
+                    for room in rooms:
+                        if current_room == room and topic.startswith(f"gladys/master/device/mqtt:{room}/feature/"):
+                            updated = True
+                            break
         except queue.Empty:
             pass
 
