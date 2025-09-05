@@ -112,14 +112,21 @@ def write_text(papirus: Papirus, text: str, size: int):
         # Replace icon placeholders with actual icons
         x = 0
         words = l.split()
-        for word in words:
+        skip_space = False
+        for idx, word in enumerate(words):
             if word in icon_map:
                 draw.text((x, ((size*(i+1))-size)), icon_map[word], font=icon_font, fill=BLACK)
                 bbox = icon_font.getbbox(icon_map[word])
-                x += (bbox[2] - bbox[0]) + 2
+                x += (bbox[2] - bbox[0]) + size // 2  # extra space after icon
+                skip_space = True
             else:
-                draw.text((x, ((size*(i+1))-size)), word + ' ', font=font, fill=BLACK)
-                bbox = font.getbbox(word + ' ')
+                # Add extra space before value if previous was icon
+                prefix = ''
+                if skip_space:
+                    prefix = '  '
+                    skip_space = False
+                draw.text((x, ((size*(i+1))-size)), prefix + word + ' ', font=font, fill=BLACK)
+                bbox = font.getbbox(prefix + word + ' ')
                 x += (bbox[2] - bbox[0])
 
     papirus.display(image)
