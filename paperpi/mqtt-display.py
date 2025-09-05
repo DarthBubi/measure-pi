@@ -167,6 +167,14 @@ def get_unit(feature: str) -> str:
     }
     return units.get(feature, "")
 
+def get_feature_icon(feature: str) -> str:
+    icon = {
+        "temperature": ":thermo:",
+        "humidity": ":drop:",
+        "dew_point": ":water:"
+    }
+    return icon.get(feature, "")
+
 def update_room_display(room: str, last_values: dict, papirus: Papirus):
     topic_template = "gladys/master/device/mqtt:{room}/feature/mqtt:{feature}_{room}/state"
     features = ["temperature", "humidity", "dew_point"]
