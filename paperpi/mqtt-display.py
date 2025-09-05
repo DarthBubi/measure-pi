@@ -1,15 +1,19 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+
 import argparse
 import datetime
 import os
+import queue
 import sys
+import threading
 from time import sleep
 from typing import Any
 
 import paho.mqtt.client as mqtt
 import RPi.GPIO as GPIO
+from dotenv import load_dotenv
 from paho.mqtt.properties import Properties
 from papirus import Papirus
 from PIL import Image, ImageDraw, ImageFont
@@ -98,30 +102,20 @@ def write_text(papirus: Papirus, text: str, size: int):
     papirus.display(image)
     papirus.partial_update()
 
-def on_connect(client: mqtt.Client, userdata: Any, flags: int, reason_code: int, properties: Properties):
-    print("Connected with result code "+str(reason_code))
-
-    # Subscribing in on_connect() means that if we lose the connection and
-    # reconnect then subscriptions will be renewed.
-    client.subscribe([("/home/measure/living_room/temperature", 1),
-                      ("/home/measure/living_room/humidity", 1),
-                      ("/home/measure/bedroom/temperature", 1),
-                      ("/home/measure/bedroom/humidity", 1)])
+def on_connect(client: mqtt.Client, userdata: Any, flags, rc):
+    print("Connected with result code " + str(rc))
+    # Subscribe to new topic scheme for both rooms and features
+    topics = [
+        ("gladys/master/device/mqtt:living_room/feature/mqtt:temperature_living_room/state", 1),
+        ("gladys/master/device/mqtt:living_room/feature/mqtt:humidity_living_room/state", 1),
+        ("gladys/master/device/mqtt:bedroom/feature/mqtt:temperature_bedroom/state", 1),
+        ("gladys/master/device/mqtt:bedroom/feature/mqtt:humidity_bedroom/state", 1)
+    ]
+    for topic, qos in topics:
+        client.subscribe(topic, qos)
 
 def msg_cb(client: mqtt.Client, userdata: Any, message: mqtt.MQTTMessage):
-    global received_temp, received_humid, received_temp_b, received_humid_b, temp_l, humid_l, temp_b, humid_b
-    if message.topic == "/home/measure/living_room/temperature":
-        temp_l = message.payload.decode("utf-8")
-        received_temp = True
-    elif message.topic == "/home/measure/bedroom/temperature":
-        temp_b = message.payload.decode("utf-8")
-        received_temp_b = True
-    elif message.topic == "/home/measure/living_room/humidity":
-        humid_l = message.payload.decode("utf-8")
-        received_humid = True
-    elif message.topic == "/home/measure/bedroom/humidity":
-        humid_b = message.payload.decode("utf-8")
-        received_humid_b = True
+    userdata['msg_queue'].put((message.topic, message.payload.decode("utf-8")))
 
 def parse_args():
     parser = argparse.ArgumentParser(description='MQTT display')
@@ -130,13 +124,15 @@ def parse_args():
                         help='screen rotation')
     return parser.parse_args()
 
+
+
 if __name__ == "__main__":
-    global received, val
+    # Load environment variables from .env
+    load_dotenv()
 
     args = parse_args()
 
     GPIO.setmode(GPIO.BCM)
-
     GPIO.setup(SW1, GPIO.IN)
     GPIO.setup(SW2, GPIO.IN)
     GPIO.setup(SW3, GPIO.IN)
@@ -145,80 +141,77 @@ if __name__ == "__main__":
         GPIO.setup(SW5, GPIO.IN)
 
     papirus = Papirus(rotation=args.rotation)
-
-    # Use smaller font for smaller displays
     if papirus.height <= 96:
         SIZE = 18
-
     papirus.clear()
-
     write_text(papirus, "Ready... SW1 + SW2 to exit.", SIZE)
 
-    # Migrate to paho-mqtt v2 API: specify CallbackAPIVersion.VERSION1 for legacy callback signatures
-    client = mqtt.Client(client_id="paperpi", clean_session=False, callback_api_version=mqtt.CallbackAPIVersion.VERSION1)
+    # Thread-safe queue for messages
+    msg_queue = queue.Queue()
+    userdata = {'msg_queue': msg_queue}
+
+    # Load MQTT credentials from environment
+    mqtt_host = os.getenv("MQTT_HOST", "localhost")
+    mqtt_port = int(os.getenv("MQTT_PORT", "1883"))
+    mqtt_user = os.getenv("MQTT_USER")
+    mqtt_pass = os.getenv("MQTT_PASS")
+
+    client = mqtt.Client(client_id="paperpi", clean_session=False, userdata=userdata)
+    if mqtt_user and mqtt_pass:
+        client.username_pw_set(mqtt_user, mqtt_pass)
+    else:
+        print("MQTT_USER or MQTT_PASS not set, connecting without authentication.")
     client.on_message = msg_cb
     client.on_connect = on_connect
-    client.connect("192.168.178.30")
+    client.connect(mqtt_host, mqtt_port)
+
+    # Start MQTT loop in a separate thread
+    mqtt_thread = threading.Thread(target=client.loop_forever, daemon=True)
+    mqtt_thread.start()
+
+    # State for last received values (new topic scheme)
+    last_values = {
+        "gladys/master/device/mqtt:living_room/feature/mqtt:temperature_living_room/state": "",
+        "gladys/master/device/mqtt:living_room/feature/mqtt:humidity_living_room/state": "",
+        "gladys/master/device/mqtt:bedroom/feature/mqtt:temperature_bedroom/state": "",
+        "gladys/master/device/mqtt:bedroom/feature/mqtt:humidity_bedroom/state": ""
+    }
 
     while True:
         # Exit when SW1 and SW2 are pressed simultaneously
-        if (GPIO.input(SW1) == False) and (GPIO.input(SW2) == False) :
+        if (GPIO.input(SW1) == False) and (GPIO.input(SW2) == False):
             write_text(papirus, "Exiting ...", SIZE)
             sleep(0.2)
             papirus.clear()
             sys.exit()
-
+       
         if GPIO.input(SW1) == False:
             write_text(papirus, "One", SIZE)
-
-        if GPIO.input(SW2) == False:
+        elif GPIO.input(SW2) == False:
             write_text(papirus, "Two", SIZE)
-
-        if GPIO.input(SW3) == False:
+        elif GPIO.input(SW3) == False:
             write_text(papirus, "Three", SIZE)
-
-        if GPIO.input(SW4) == False:
-            write_text(papirus, "Getting bedroom values...", SIZE)
-            a = datetime.datetime.now()
-            while not received_humid_b:
-                client.publish("/home/measure/bedroom/get", "humidity", qos=1)
-                client.loop()
-            humidity = humid_b
-            received_humid_b = False
-
-            while not received_temp_b:
-                client.publish("/home/measure/bedroom/get", "temperature", qos=1)
-                client.loop()
-            b = datetime.datetime.now()
-            temperature = temp_b
-            received_temp_b = False
-            print(b - a)
-
-            text = "bedroom"
-            text += "\ntemperature: " + temperature + " °C"
-            text += "\nhumidity: " + humidity + " %"
+        elif GPIO.input(SW4) == False:
+            # Bedroom
+            text = "Bedroom\nTemp: {} °C\nHumidity: {} %".format(
+                last_values["gladys/master/device/mqtt:bedroom/feature/mqtt:temperature_bedroom/state"],
+                last_values["gladys/master/device/mqtt:bedroom/feature/mqtt:humidity_bedroom/state"]
+            )
+            write_text(papirus, text, SIZE)
+        elif (SW5 != -1) and (GPIO.input(SW5) == False):
+            # Living Room
+            text = "Living Room\nTemp: {} °C\nHumidity: {} %".format(
+                last_values["gladys/master/device/mqtt:living_room/feature/mqtt:temperature_living_room/state"],
+                last_values["gladys/master/device/mqtt:living_room/feature/mqtt:humidity_living_room/state"]
+            )
             write_text(papirus, text, SIZE)
 
-        if (SW5 != -1) and (GPIO.input(SW5) == False):
-            write_text(papirus, "Getting living room values...", SIZE)
-            a = datetime.datetime.now()
-            while not received_humid:
-                client.publish("/home/measure/living_room/get", "humidity", qos=1)
-                client.loop()
-            humidity = humid_l
-            received_humid = False
-
-            while not received_temp:
-                client.publish("/home/measure/living_room/get", "temperature", qos=1)            
-                client.loop()
-            b = datetime.datetime.now()
-            temperature = temp_l
-            received_temp = False
-            print(b - a)
-
-            text = "living room"
-            text += "\ntemperature: " + temperature + " °C"
-            text += "\nhumidity: " + humidity + " %"
-            write_text(papirus, text, SIZE)
+        try:
+            while True:
+                topic, value = msg_queue.get_nowait()
+                if topic in last_values:
+                    last_values[topic] = value
+        except queue.Empty:
+            pass
 
         sleep(0.1)
