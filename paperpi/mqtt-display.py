@@ -178,7 +178,7 @@ def get_feature_icon(feature: str) -> str:
 def update_room_display(room: str, last_values: dict, papirus: Papirus):
     topic_template = "gladys/master/device/mqtt:{room}/feature/mqtt:{feature}_{room}/state"
     features = ["temperature", "humidity", "dew_point"]
-    text = "{}\n".format(room.capitalize())
+    text = "{}\n".format(' '.join([w.capitalize() for w in room.split('_')]))
     for feature in features:
         topic = topic_template.format(room=room, feature=feature)
         text += "{}   {} {}\n".format(get_feature_icon(feature), format_value(last_values[topic]), get_unit(feature))
