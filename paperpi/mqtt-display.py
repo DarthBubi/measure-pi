@@ -159,10 +159,25 @@ def parse_args():
                         help='screen rotation')
     return parser.parse_args()
 
+def get_unit(feature: str) -> str:
+    units = {
+        "temperature": "°C",
+        "humidity": "%",
+        "dew_point": "°C"
+    }
+    return units.get(feature, "")
+
+def update_room_display(room: str, last_values: dict, papirus: Papirus):
+    topic_template = "gladys/master/device/mqtt:{room}/feature/mqtt:{feature}_{room}/state"
+    features = ["temperature", "humidity", "dew_point"]
+    text = "{}\n".format(room.capitalize())
+    for feature in features:
+        topic = topic_template.format(room=room, feature=feature)
+        text += ":{}:   {} {}\n".format(feature, format_value(last_values[topic]), get_unit(feature))
+    write_text(papirus, text, SIZE)
 
 
 if __name__ == "__main__":
-    # Load environment variables from .env
     load_dotenv()
 
     args = parse_args()
@@ -185,7 +200,6 @@ if __name__ == "__main__":
     msg_queue = queue.Queue()
     userdata = {'msg_queue': msg_queue}
 
-    # Load MQTT credentials from environment
     mqtt_host = os.getenv("MQTT_HOST", "localhost")
     mqtt_port = int(os.getenv("MQTT_PORT", "1883"))
     mqtt_user = os.getenv("MQTT_USER")
@@ -233,40 +247,16 @@ if __name__ == "__main__":
             current_room = None
         elif GPIO.input(SW3) == False:
             # Kitchen
-            temp_topic = topic_template.format(room="kitchen", feature="temperature")
-            humid_topic = topic_template.format(room="kitchen", feature="humidity")
-            dew_point_topic = topic_template.format(room="kitchen", feature="dew_point")
-            text = "Kitchen\n:thermo:   {} °C\n:drop:   {} %\n:water:   {} °C".format(
-                format_value(last_values[temp_topic]),
-                format_value(last_values[humid_topic]),
-                format_value(last_values[dew_point_topic])
-            )
-            write_text(papirus, text, SIZE)
             current_room = "kitchen"
+            update_room_display(current_room, last_values, papirus)
         elif GPIO.input(SW4) == False:
             # Bedroom
-            temp_topic = topic_template.format(room="bedroom", feature="temperature")
-            humid_topic = topic_template.format(room="bedroom", feature="humidity")
-            dew_point_topic = topic_template.format(room="bedroom", feature="dew_point")
-            text = "Bedroom\n:thermo:   {} °C\n:drop:   {} %\n:water:   {} °C".format(
-                format_value(last_values[temp_topic]),
-                format_value(last_values[humid_topic]),
-                format_value(last_values[dew_point_topic])
-            )
-            write_text(papirus, text, SIZE)
             current_room = "bedroom"
+            update_room_display(current_room, last_values, papirus)
         elif (SW5 != -1) and (GPIO.input(SW5) == False):
             # Living Room
-            temp_topic = topic_template.format(room="living_room", feature="temperature")
-            humid_topic = topic_template.format(room="living_room", feature="humidity")
-            dew_point_topic = topic_template.format(room="living_room", feature="dew_point")
-            text = "Living Room\n:thermo:   {} °C\n:drop:   {} %\n:water:   {} °C".format(
-                format_value(last_values[temp_topic]),
-                format_value(last_values[humid_topic]),
-                format_value(last_values[dew_point_topic])
-            )
-            write_text(papirus, text, SIZE)
             current_room = "living_room"
+            update_room_display(current_room, last_values, papirus)
 
         # Refresh display if new data arrives for the current room
         updated = False
@@ -284,34 +274,15 @@ if __name__ == "__main__":
             pass
 
         if updated and current_room == "bedroom":
-            temp_topic = topic_template.format(room="bedroom", feature="temperature")
-            humid_topic = topic_template.format(room="bedroom", feature="humidity")
-            dew_point_topic = topic_template.format(room="bedroom", feature="dew_point")
-            text = "Bedroom\n:thermo: {} °C\n:drop: {} %\n:water: {} °C".format(
-                format_value(last_values[temp_topic]),
-                format_value(last_values[humid_topic]),
-                format_value(last_values[dew_point_topic])
-            )
-            write_text(papirus, text, SIZE)
-        elif updated and current_room == "living_room":
-            temp_topic = topic_template.format(room="living_room", feature="temperature")
-            humid_topic = topic_template.format(room="living_room", feature="humidity")
-            dew_point_topic = topic_template.format(room="living_room", feature="dew_point")
-            text = "Living Room\n:thermo: {} °C\n:drop: {} %\n:water: {} °C".format(
-                format_value(last_values[temp_topic]),
-                format_value(last_values[humid_topic]),
-                format_value(last_values[dew_point_topic])
-            )
-            write_text(papirus, text, SIZE)
-        elif updated and current_room == "kitchen":
-            temp_topic = topic_template.format(room="kitchen", feature="temperature")
-            humid_topic = topic_template.format(room="kitchen", feature="humidity")
-            dew_point_topic = topic_template.format(room="kitchen", feature="dew_point")
-            text = "Kitchen\n:thermo: {} °C\n:drop: {} %\n:water: {} °C".format(
-                format_value(last_values[temp_topic]),
-                format_value(last_values[humid_topic]),
-                format_value(last_values[dew_point_topic])
-            )
-            write_text(papirus, text, SIZE)
+            current_room = "bedroom"
+            update_room_display(current_room, last_values, papirus)
+
+        if updated and current_room == "living_room":
+            current_room = "living_room"
+            update_room_display(current_room, last_values, papirus)
+
+        if updated and current_room == "kitchen":
+            current_room = "kitchen"
+            update_room_display(current_room, last_values, papirus)
 
         sleep(0.1)
