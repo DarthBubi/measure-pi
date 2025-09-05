@@ -77,7 +77,14 @@ def write_text(papirus: Papirus, text: str, size: int):
 
     image = Image.new('1', papirus.size, WHITE)
     draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/DejaVuSans.ttf', size)
+    # Load main text font (DejaVu Sans)
+    font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', size)
+    # Load weather icon font (make sure this file exists)
+    try:
+        icon_font = ImageFont.truetype('/usr/share/fonts/truetype/weathericons/weathericons-regular-webfont.ttf', size)
+    except Exception:
+        icon_font = font  # fallback if not available
+
     line_size = (papirus.width / (size*0.65))
 
     # Split by explicit newlines first
@@ -94,8 +101,26 @@ def write_text(papirus: Papirus, text: str, size: int):
                 current_line = word
         text_lines.append(current_line)
 
+    # Weather Icons Unicode: thermometer = '\uf055', raindrop = '\uf078'
+    # See https://erikflowers.github.io/weather-icons/ for reference
+    icon_map = {
+        ':thermo:': '\uf055',
+        ':drop:': '\uf078'
+    }
+
     for i, l in enumerate(text_lines):
-        draw.text((0, ((size*(i+1))-size)), l, font=font, fill=BLACK)
+        # Replace icon placeholders with actual icons
+        x = 0
+        words = l.split()
+        for word in words:
+            if word in icon_map:
+                draw.text((x, ((size*(i+1))-size)), icon_map[word], font=icon_font, fill=BLACK)
+                bbox = icon_font.getbbox(icon_map[word])
+                x += (bbox[2] - bbox[0]) + 2
+            else:
+                draw.text((x, ((size*(i+1))-size)), word + ' ', font=font, fill=BLACK)
+                bbox = font.getbbox(word + ' ')
+                x += (bbox[2] - bbox[0])
 
     papirus.display(image)
     write_text.partial_count += 1
@@ -202,7 +227,7 @@ if __name__ == "__main__":
             # Kitchen
             temp_topic = topic_template.format(room="kitchen", feature="temperature")
             humid_topic = topic_template.format(room="kitchen", feature="humidity")
-            text = "Kitchen\n🌡️: {} °C\n💧: {} %".format(
+            text = "Kitchen\n:thermo: {} °C\n:drop: {} %".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic])
             )
@@ -212,7 +237,7 @@ if __name__ == "__main__":
             # Bedroom
             temp_topic = topic_template.format(room="bedroom", feature="temperature")
             humid_topic = topic_template.format(room="bedroom", feature="humidity")
-            text = "Bedroom\n🌡️: {} °C\n💧: {} %".format(
+            text = "Bedroom\n:thermo: {} °C\n:drop: {} %".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic])
             )
@@ -222,7 +247,7 @@ if __name__ == "__main__":
             # Living Room
             temp_topic = topic_template.format(room="living_room", feature="temperature")
             humid_topic = topic_template.format(room="living_room", feature="humidity")
-            text = "Living Room\n🌡️: {} °C\n💧: {} %".format(
+            text = "Living Room\n:thermo: {} °C\n:drop: {} %".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic])
             )
@@ -247,7 +272,7 @@ if __name__ == "__main__":
         if updated and current_room == "bedroom":
             temp_topic = topic_template.format(room="bedroom", feature="temperature")
             humid_topic = topic_template.format(room="bedroom", feature="humidity")
-            text = "Bedroom\n🌡️: {} °C\n💧: {} %".format(
+            text = "Bedroom\n:thermo: {} °C\n:drop: {} %".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic])
             )
@@ -255,7 +280,7 @@ if __name__ == "__main__":
         elif updated and current_room == "living_room":
             temp_topic = topic_template.format(room="living_room", feature="temperature")
             humid_topic = topic_template.format(room="living_room", feature="humidity")
-            text = "Living Room\n🌡️: {} °C\n💧: {} %".format(
+            text = "Living Room\n:thermo: {} °C\n:drop: {} %".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic])
             )
@@ -263,7 +288,7 @@ if __name__ == "__main__":
         elif updated and current_room == "kitchen":
             temp_topic = topic_template.format(room="kitchen", feature="temperature")
             humid_topic = topic_template.format(room="kitchen", feature="humidity")
-            text = "Kitchen\n🌡️: {} °C\n💧: {} %".format(
+            text = "Kitchen\n:thermo: {} °C\n:drop: {} %".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic])
             )
