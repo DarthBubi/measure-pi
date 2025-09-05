@@ -181,7 +181,7 @@ def update_room_display(room: str, last_values: dict, papirus: Papirus):
     text = "{}\n".format(room.capitalize())
     for feature in features:
         topic = topic_template.format(room=room, feature=feature)
-        text += ":{}:   {} {}\n".format(feature, format_value(last_values[topic]), get_unit(feature))
+        text += "{}   {} {}\n".format(get_feature_icon(feature), format_value(last_values[topic]), get_unit(feature))
     write_text(papirus, text, SIZE)
 
 
