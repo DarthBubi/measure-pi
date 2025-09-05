@@ -77,7 +77,7 @@ def write_text(papirus: Papirus, text: str, size: int):
 
     image = Image.new('1', papirus.size, WHITE)
     draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf', size)
+    font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/DejaVuSans.ttf', size)
     line_size = (papirus.width / (size*0.65))
 
     # Split by explicit newlines first
