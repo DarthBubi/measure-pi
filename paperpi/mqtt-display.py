@@ -106,7 +106,7 @@ def on_connect(client: mqtt.Client, userdata: Any, flags, rc):
     print("Connected with result code " + str(rc))
     # Topic template
     topic_template = "gladys/master/device/mqtt:{room}/feature/mqtt:{feature}_{room}/state"
-    rooms = ["living_room", "bedroom"]
+    rooms = ["living_room", "bedroom", "kitchen"]
     features = ["temperature", "humidity"]
     for room in rooms:
         for feature in features:
@@ -196,8 +196,15 @@ if __name__ == "__main__":
             write_text(papirus, "Two", SIZE)
             current_room = None
         elif GPIO.input(SW3) == False:
-            write_text(papirus, "Three", SIZE)
-            current_room = None
+            # Kitchen
+            temp_topic = topic_template.format(room="kitchen", feature="temperature")
+            humid_topic = topic_template.format(room="kitchen", feature="humidity")
+            text = "Kitchen\nTemp: {} °C\nHumidity: {} %".format(
+                last_values[temp_topic],
+                last_values[humid_topic]
+            )
+            write_text(papirus, text, SIZE)
+            current_room = "kitchen"
         elif GPIO.input(SW4) == False:
             # Bedroom
             temp_topic = topic_template.format(room="bedroom", feature="temperature")
@@ -246,6 +253,14 @@ if __name__ == "__main__":
             temp_topic = topic_template.format(room="living_room", feature="temperature")
             humid_topic = topic_template.format(room="living_room", feature="humidity")
             text = "Living Room\nTemp: {} °C\nHumidity: {} %".format(
+                last_values[temp_topic],
+                last_values[humid_topic]
+            )
+            write_text(papirus, text, SIZE)
+        elif updated and current_room == "kitchen":
+            temp_topic = topic_template.format(room="kitchen", feature="temperature")
+            humid_topic = topic_template.format(room="kitchen", feature="humidity")
+            text = "Kitchen\nTemp: {} °C\nHumidity: {} %".format(
                 last_values[temp_topic],
                 last_values[humid_topic]
             )
