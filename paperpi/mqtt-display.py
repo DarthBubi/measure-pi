@@ -74,36 +74,30 @@ def format_value(val):
         return val
 
 def write_text(papirus: Papirus, text: str, size: int):
-
     # initially set all white background
     image = Image.new('1', papirus.size, WHITE)
-
-    # prepare for drawing
     draw = ImageDraw.Draw(image)
-
     font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf', size)
-
-    # Calculate the max number of char to fit on line
     line_size = (papirus.width / (size*0.65))
 
-    current_line = 0
-    text_lines = [""]
+    # Split by explicit newlines first
+    raw_lines = text.split('\n')
+    text_lines = []
+    for raw_line in raw_lines:
+        words = raw_line.split()
+        current_line = ""
+        for word in words:
+            # If there is space on line add the word to it
+            if (len(current_line) + len(word)) < line_size:
+                current_line += (" " if current_line else "") + word
+            else:
+                text_lines.append(current_line)
+                current_line = word
+        text_lines.append(current_line)
 
-    # Compute each line
-    for word in text.split():
-        # If there is space on line add the word to it
-        if (len(text_lines[current_line]) + len(word)) < line_size:
-            text_lines[current_line] += " " + word
-        else:
-            # No space left on line so move to next one
-            text_lines.append("")
-            current_line += 1
-            text_lines[current_line] += " " + word
-
-    current_line = 0
-    for l in text_lines:
-        current_line += 1
-        draw.text( (0, ((size*current_line)-size)) , l, font=font, fill=BLACK)
+    # Draw each line
+    for i, l in enumerate(text_lines):
+        draw.text((0, ((size*(i+1))-size)), l, font=font, fill=BLACK)
 
     papirus.display(image)
     papirus.partial_update()
