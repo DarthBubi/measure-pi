@@ -202,7 +202,7 @@ if __name__ == "__main__":
             # Kitchen
             temp_topic = topic_template.format(room="kitchen", feature="temperature")
             humid_topic = topic_template.format(room="kitchen", feature="humidity")
-            text = "Kitchen\nTemp: {} °C\nHumidity: {} %".format(
+            text = "Kitchen\n🌡️: {} °C\n💧: {} %".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic])
             )
@@ -212,7 +212,7 @@ if __name__ == "__main__":
             # Bedroom
             temp_topic = topic_template.format(room="bedroom", feature="temperature")
             humid_topic = topic_template.format(room="bedroom", feature="humidity")
-            text = "Bedroom\nTemp: {} °C\nHumidity: {} %".format(
+            text = "Bedroom\n🌡️: {} °C\n💧: {} %".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic])
             )
@@ -222,7 +222,7 @@ if __name__ == "__main__":
             # Living Room
             temp_topic = topic_template.format(room="living_room", feature="temperature")
             humid_topic = topic_template.format(room="living_room", feature="humidity")
-            text = "Living Room\nTemp: {} °C\nHumidity: {} %".format(
+            text = "Living Room\n🌡️: {} °C\n💧: {} %".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic])
             )
@@ -247,7 +247,7 @@ if __name__ == "__main__":
         if updated and current_room == "bedroom":
             temp_topic = topic_template.format(room="bedroom", feature="temperature")
             humid_topic = topic_template.format(room="bedroom", feature="humidity")
-            text = "Bedroom\nTemp: {} °C\nHumidity: {} %".format(
+            text = "Bedroom\n🌡️: {} °C\n💧: {} %".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic])
             )
@@ -255,7 +255,7 @@ if __name__ == "__main__":
         elif updated and current_room == "living_room":
             temp_topic = topic_template.format(room="living_room", feature="temperature")
             humid_topic = topic_template.format(room="living_room", feature="humidity")
-            text = "Living Room\nTemp: {} °C\nHumidity: {} %".format(
+            text = "Living Room\n🌡️: {} °C\n💧: {} %".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic])
             )
@@ -263,7 +263,7 @@ if __name__ == "__main__":
         elif updated and current_room == "kitchen":
             temp_topic = topic_template.format(room="kitchen", feature="temperature")
             humid_topic = topic_template.format(room="kitchen", feature="humidity")
-            text = "Kitchen\nTemp: {} °C\nHumidity: {} %".format(
+            text = "Kitchen\n🌡️: {} °C\n💧: {} %".format(
                 format_value(last_values[temp_topic]),
                 format_value(last_values[humid_topic])
             )
