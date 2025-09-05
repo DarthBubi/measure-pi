@@ -105,7 +105,8 @@ def write_text(papirus: Papirus, text: str, size: int):
     # See https://erikflowers.github.io/weather-icons/ for reference
     icon_map = {
         ':thermo:': '\uf055',
-        ':drop:': '\uf078'
+        ':drop:': '\uf078',
+        ':water:': '\uf04e'
     }
 
     for i, l in enumerate(text_lines):
