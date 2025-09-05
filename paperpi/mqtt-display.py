@@ -276,21 +276,9 @@ if __name__ == "__main__":
                     
                     for room in rooms:
                         if current_room == room and topic.startswith(f"gladys/master/device/mqtt:{room}/feature/"):
-                            updated = True
+                            update_room_display(current_room, last_values, papirus)
                             break
         except queue.Empty:
             pass
-
-        if updated and current_room == "bedroom":
-            current_room = "bedroom"
-            update_room_display(current_room, last_values, papirus)
-
-        if updated and current_room == "living_room":
-            current_room = "living_room"
-            update_room_display(current_room, last_values, papirus)
-
-        if updated and current_room == "kitchen":
-            current_room = "kitchen"
-            update_room_display(current_room, last_values, papirus)
 
         sleep(0.1)
