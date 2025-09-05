@@ -104,15 +104,14 @@ def write_text(papirus: Papirus, text: str, size: int):
 
 def on_connect(client: mqtt.Client, userdata: Any, flags, rc):
     print("Connected with result code " + str(rc))
-    # Subscribe to new topic scheme for both rooms and features
-    topics = [
-        ("gladys/master/device/mqtt:living_room/feature/mqtt:temperature_living_room/state", 1),
-        ("gladys/master/device/mqtt:living_room/feature/mqtt:humidity_living_room/state", 1),
-        ("gladys/master/device/mqtt:bedroom/feature/mqtt:temperature_bedroom/state", 1),
-        ("gladys/master/device/mqtt:bedroom/feature/mqtt:humidity_bedroom/state", 1)
-    ]
-    for topic, qos in topics:
-        client.subscribe(topic, qos)
+    # Topic template
+    topic_template = "gladys/master/device/mqtt:{room}/feature/mqtt:{feature}_{room}/state"
+    rooms = ["living_room", "bedroom"]
+    features = ["temperature", "humidity"]
+    for room in rooms:
+        for feature in features:
+            topic = topic_template.format(room=room, feature=feature)
+            client.subscribe(topic, 1)
 
 def msg_cb(client: mqtt.Client, userdata: Any, message: mqtt.MQTTMessage):
     userdata['msg_queue'].put((message.topic, message.payload.decode("utf-8")))
@@ -169,13 +168,18 @@ if __name__ == "__main__":
     mqtt_thread = threading.Thread(target=client.loop_forever, daemon=True)
     mqtt_thread.start()
 
-    # State for last received values (new topic scheme)
-    last_values = {
-        "gladys/master/device/mqtt:living_room/feature/mqtt:temperature_living_room/state": "",
-        "gladys/master/device/mqtt:living_room/feature/mqtt:humidity_living_room/state": "",
-        "gladys/master/device/mqtt:bedroom/feature/mqtt:temperature_bedroom/state": "",
-        "gladys/master/device/mqtt:bedroom/feature/mqtt:humidity_bedroom/state": ""
-    }
+    # State for last received values (using topic template)
+    topic_template = "gladys/master/device/mqtt:{room}/feature/mqtt:{feature}_{room}/state"
+    rooms = ["living_room", "bedroom"]
+    features = ["temperature", "humidity"]
+    last_values = {}
+    for room in rooms:
+        for feature in features:
+            topic = topic_template.format(room=room, feature=feature)
+            last_values[topic] = ""
+
+    # Track which room is currently displayed
+    current_room = None
 
     while True:
         # Exit when SW1 and SW2 are pressed simultaneously
@@ -184,34 +188,67 @@ if __name__ == "__main__":
             sleep(0.2)
             papirus.clear()
             sys.exit()
-       
+
         if GPIO.input(SW1) == False:
             write_text(papirus, "One", SIZE)
+            current_room = None
         elif GPIO.input(SW2) == False:
             write_text(papirus, "Two", SIZE)
+            current_room = None
         elif GPIO.input(SW3) == False:
             write_text(papirus, "Three", SIZE)
+            current_room = None
         elif GPIO.input(SW4) == False:
             # Bedroom
+            temp_topic = topic_template.format(room="bedroom", feature="temperature")
+            humid_topic = topic_template.format(room="bedroom", feature="humidity")
             text = "Bedroom\nTemp: {} °C\nHumidity: {} %".format(
-                last_values["gladys/master/device/mqtt:bedroom/feature/mqtt:temperature_bedroom/state"],
-                last_values["gladys/master/device/mqtt:bedroom/feature/mqtt:humidity_bedroom/state"]
+                last_values[temp_topic],
+                last_values[humid_topic]
             )
             write_text(papirus, text, SIZE)
+            current_room = "bedroom"
         elif (SW5 != -1) and (GPIO.input(SW5) == False):
             # Living Room
+            temp_topic = topic_template.format(room="living_room", feature="temperature")
+            humid_topic = topic_template.format(room="living_room", feature="humidity")
             text = "Living Room\nTemp: {} °C\nHumidity: {} %".format(
-                last_values["gladys/master/device/mqtt:living_room/feature/mqtt:temperature_living_room/state"],
-                last_values["gladys/master/device/mqtt:living_room/feature/mqtt:humidity_living_room/state"]
+                last_values[temp_topic],
+                last_values[humid_topic]
             )
             write_text(papirus, text, SIZE)
+            current_room = "living_room"
 
+        # Refresh display if new data arrives for the current room
+        updated = False
         try:
             while True:
                 topic, value = msg_queue.get_nowait()
                 if topic in last_values:
                     last_values[topic] = value
+                    
+                    if current_room == "bedroom" and topic.startswith("gladys/master/device/mqtt:bedroom/feature/"):
+                        updated = True
+                    elif current_room == "living_room" and topic.startswith("gladys/master/device/mqtt:living_room/feature/"):
+                        updated = True
         except queue.Empty:
             pass
+
+        if updated and current_room == "bedroom":
+            temp_topic = topic_template.format(room="bedroom", feature="temperature")
+            humid_topic = topic_template.format(room="bedroom", feature="humidity")
+            text = "Bedroom\nTemp: {} °C\nHumidity: {} %".format(
+                last_values[temp_topic],
+                last_values[humid_topic]
+            )
+            write_text(papirus, text, SIZE)
+        elif updated and current_room == "living_room":
+            temp_topic = topic_template.format(room="living_room", feature="temperature")
+            humid_topic = topic_template.format(room="living_room", feature="humidity")
+            text = "Living Room\nTemp: {} °C\nHumidity: {} %".format(
+                last_values[temp_topic],
+                last_values[humid_topic]
+            )
+            write_text(papirus, text, SIZE)
 
         sleep(0.1)
