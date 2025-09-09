@@ -8,7 +8,7 @@ import requests
 import socket
 import time
 
-from datetime import datetime
+from datetime import datetime, timezone
 from influxdb import InfluxDBClient
 from typing import Optional
 
@@ -37,7 +37,7 @@ class InfluxDBLogger:
                     "node": self.node,
                     "sensor": self.sensor_type
                 },
-                "time": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+                "time": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
                 "fields": {
                     "temperature": temperature
                 }
