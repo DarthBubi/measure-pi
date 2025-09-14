@@ -1,0 +1,3 @@
+[submodule "bme68x"]
+	path = bme68x-python-library-bsec2.6.1.0
+	url = https://github.com/mcalisterkm/bme68x-python-library-bsec2.6.1.0.git
