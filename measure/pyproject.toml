@@ -1,0 +1,14 @@
+[project]
+name = "measure"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "adafruit-circuitpython-dht>=4.0.9",
+    "bme280>=0.7",
+    "dotenv>=0.9.9",
+    "influxdb>=5.3.2",
+    "RPi.GPIO>=0.7.1",
+    "smbus>=1.1.post2",
+]
