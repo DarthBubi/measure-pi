@@ -267,7 +267,6 @@ if __name__ == "__main__":
             update_room_display(current_room, last_values, papirus)
 
         # Refresh display if new data arrives for the current room
-        updated = False
         try:
             while True:
                 topic, value = msg_queue.get_nowait()
