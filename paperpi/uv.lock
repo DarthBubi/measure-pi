@@ -32,8 +32,9 @@ dependencies = [
     { name = "papirus" },
     { name = "pillow" },
     { name = "python-dateutil" },
-    { name = "rpi-gpio" },
-    { name = "smbus" },
+    { name = "rpi-gpio", marker = "sys_platform == 'linux'" },
+    { name = "rpi-gpio-def", marker = "sys_platform == 'win32'" },
+    { name = "smbus", marker = "sys_platform == 'linux'" },
 ]
 
 [package.metadata]
@@ -43,8 +44,9 @@ requires-dist = [
     { name = "papirus", specifier = ">=1.0.0" },
     { name = "pillow", specifier = ">=11.3.0" },
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
-    { name = "rpi-gpio", specifier = ">=0.7.0" },
-    { name = "smbus", specifier = ">=1.1.post2" },
+    { name = "rpi-gpio", marker = "sys_platform == 'linux'", specifier = ">=0.7.1" },
+    { name = "rpi-gpio-def", marker = "sys_platform == 'win32'", specifier = ">=0.2" },
+    { name = "smbus", marker = "sys_platform == 'linux'", specifier = ">=1.1.post2" },
 ]
 
 [[package]]
@@ -137,6 +139,12 @@ name = "rpi-gpio"
 version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c4/0f/10b524a12b3445af1c607c27b2f5ed122ef55756e29942900e5c950735f2/RPi.GPIO-0.7.1.tar.gz", hash = "sha256:cd61c4b03c37b62bba4a5acfea9862749c33c618e0295e7e90aa4713fb373b70", size = 29090, upload-time = "2022-02-06T15:15:06.022Z" }
+
+[[package]]
+name = "rpi-gpio-def"
+version = "0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/94/b4/3a388e0a3ee4635a271b2adad7b464bf23aac75d2a31c8369f9eb4c28885/RPi.GPIO-def-0.2.zip", hash = "sha256:4a8007233ecfa6d1cd655beaed6a8a02bc8e0a92035312d61bae9e525f8c6124", size = 4027, upload-time = "2018-09-14T17:21:40.389Z" }
 
 [[package]]
 name = "six"
