@@ -7,6 +7,7 @@ import RPi.GPIO as GPIO
 import adafruit_dht
 
 from bme280 import bme280, bme280_i2c
+from board import Pin
 from logger import CsvLogger
 from datetime import datetime
 
@@ -55,14 +56,14 @@ def read_bme280(bus: int, address: int) -> tuple[float | None, float | None, flo
     return temperature, pressure, humidity
 
 
-def read_dht22(pin: int) -> tuple[float, float]:
+def read_dht22(pin: Pin) -> tuple[float, float]:
     """
     Read the current temperature and humidity from the DHT22 sensor
 
     :param pin: the GPIO pin number
     :return: a tuple of (temperature, humidity)
     """
-    dht_device = adafruit_dht.DHT22(pin)
+    dht_device = adafruit_dht.DHT22(pin, False)
 
     try:
         humidity, temperature = dht_device.humidity, dht_device.temperature

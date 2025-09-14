@@ -9,6 +9,8 @@ import socket
 import time
 import sys
 
+import board
+
 from datetime import datetime, timezone
 from influxdb import InfluxDBClient
 from typing import Optional
@@ -53,14 +55,14 @@ class InfluxDBLogger:
 
         return jason_string
 
-    def log_temperature(self, sensor_type, id=None, bus=None, address=None, pin=None) -> None:
+    def log_temperature(self, sensor_type: str, id: str=None, bus: int=None, address: int=None, pin: board.Pin=None) -> None:
         temperature = humidity = pressure = None
 
-        if sensor_type == "DS18B20" and id is not None:
+        if sensor_type == "DS18B20" and id:
             temperature = read_ds18b20(id)
-        elif sensor_type == "DHT22" and pin is not None:
+        elif sensor_type == "DHT22" and pin:
             temperature, humidity = read_dht22(pin)
-        elif sensor_type == "BME280" and bus is not None and address is not None:
+        elif sensor_type == "BME280" and bus and address:
             temperature, pressure, humidity = read_bme280(bus, address)
         else:
             logging.error(f"Unknown sensor type: {sensor_type} or insufficient parameters")
