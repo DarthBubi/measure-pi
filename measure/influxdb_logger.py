@@ -55,7 +55,7 @@ class InfluxDBLogger:
 
         return jason_string
 
-    def log_temperature(self, sensor_type: str, id: str=None, bus: int=None, address: int=None, pin: board.Pin=None) -> None:
+    def log_temperature(self, sensor_type: str, id: str | None=None, bus: int | None=None, address: int | None=None, pin: board.Pin | None=None) -> None:
         temperature = humidity = pressure = None
 
         if sensor_type == "DS18B20" and id:
