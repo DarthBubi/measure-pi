@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from influxdb import InfluxDBClient
 from typing import Optional
 
-from read_sensor_data import read_ds18b20, read_bme280, read_dht22
+from read_sensor_data import read_ds18b20, read_bme280, read_bme68x, read_dht22, 
 
 
 class InfluxDBLogger:
@@ -64,6 +64,8 @@ class InfluxDBLogger:
             temperature, humidity = read_dht22(pin)
         elif sensor_type == "BME280" and bus and address:
             temperature, pressure, humidity = read_bme280(bus, address)
+        elif sensor_type == "BME680" and bus and address:
+            temperature, pressure, humidity = read_bme68x(0x76)
         else:
             logging.error(f"Unknown sensor type: {sensor_type} or insufficient parameters")
             return

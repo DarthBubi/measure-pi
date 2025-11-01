@@ -3,16 +3,23 @@
 
 import argparse
 import re
-import RPi.GPIO as GPIO
+
 import adafruit_dht
+import bme68xConstants as cnst
+import bsecConstants as bsec
+import RPi.GPIO as GPIO
 
 from bme280 import bme280, bme280_i2c
+from bme68x import BME68X
 from board import Pin
 from logger import CsvLogger
 from datetime import datetime
+from dotenv import load_dotenv
 
 SENSOR_ID = f"28-000009aeb3f5"
 SENSOR_NAME = f"/sys/bus/w1/devices/{SENSOR_ID}/w1_slave"
+
+load_dotenv()
 
 
 def read_ds18b20(path: str) -> float | None:
@@ -54,6 +61,70 @@ def read_bme280(bus: int, address: int) -> tuple[float | None, float | None, flo
     humidity = round(sensor_values.humidity, 2)
 
     return temperature, pressure, humidity
+
+
+def setup_bme68x(address: int, temp_offset: float = 0.0, state_path: str = "bme68x_state.txt", conf_file: str = "bme68x_conf.txt") -> None:
+    """
+    Setup the BME68X sensor with BSEC configuration
+
+    :param address: the I2C address of the BME68X sensor
+    :param temp_offset: temperature offset to apply
+    :param state_file: path to the BME68X state file
+    :param conf_file: path to the BME68X configuration file
+    """
+    if address == 0x76:
+        bme68x = BME68X(cnst.BME68X_I2C_ADDR_LOW, 0)
+    elif address == 0x77:
+        bme68x = BME68X(cnst.BME68X_I2C_ADDR_HIGH, 0)
+    else:
+        raise ValueError("Invalid I2C address for BME68X sensor. Use 0x76 or 0x77.")
+
+    if state_path is None or conf_file is None:
+        raise ValueError("State file and configuration file paths must be provided.")
+
+    with open(state_path, "r") as state_file:
+        states = [int(s) for s in state_file.read().strip().strip('[]').split(',') if s.strip()]
+
+    bme68x.set_bsec_state_file(states)
+    bme68x.set_temperature_offset(temp_offset)
+    bme68x.set_sample_rate(bsec.BSEC_SAMPLE_RATE_LP)
+
+
+def read_bme68x(address: int) -> dict[str, float | None]:
+    """
+    Read the current temperature, humidity and pressure from the BME68X sensor
+
+    :param bus: the I2C bus number
+    :param address: the I2C address of the BME68X sensor
+    :return: dictionary with keys: temperature, pressure, humidity, iaq, static_iaq, co2_equivalent, breath_voc_equivalent
+    """
+
+    setup_bme68x(address)
+
+    data = {}
+    
+    try:
+        data = bme68x.get_bsec_data()
+    except Exception as e:
+        print(f"Error reading BME68X sensor: {e}")
+        raise e
+    if not data or len(data) == 0:
+        raise RuntimeError("Failed to read from BME68X sensor")
+
+    result = {
+        "temperature": round(data["temperature"], 2),
+        "pressure": round(data["pressure"], 2),
+        "humidity": round(data["humidity"], 2),
+        "iaq": round(data["iaq"], 2),
+        "static_iaq": round(data["static_iaq"], 2),
+        "co2_equivalent": round(data["co2_equivalent"], 2),
+        "breath_voc_equivalent": round(data["breath_voc_equivalent"], 2),
+        "iaq_accuracy": data["iaq_accuracy"],
+        "stabilization_status": data["stabilization_status"],
+        "run_in_status": data["run_in_status"]
+    }
+    
+    return result
 
 
 def read_dht22(pin: Pin) -> tuple[float, float]:
