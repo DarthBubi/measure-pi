@@ -63,7 +63,7 @@ def read_bme280(bus: int, address: int) -> tuple[float | None, float | None, flo
     return temperature, pressure, humidity
 
 
-def setup_bme68x(address: int, temp_offset: float = 0.0, state_path: str = "bme68x_state.txt", conf_file: str = "bme68x_conf.txt") -> None:
+def setup_bme68x(address: int, temp_offset: float = 0.0, state_path: str = "bme68x_state.txt", conf_file: str = "bme68x_conf.txt") -> BME68X:
     """
     Setup the BME68X sensor with BSEC configuration
 
@@ -89,8 +89,10 @@ def setup_bme68x(address: int, temp_offset: float = 0.0, state_path: str = "bme6
     bme68x.set_temperature_offset(temp_offset)
     bme68x.set_sample_rate(bsec.BSEC_SAMPLE_RATE_LP)
 
+    return bme68x
 
-def read_bme68x(address: int) -> dict[str, float | None]:
+
+def read_bme68x(address: int, bme68x: BME68X = None) -> dict[str, float | None]:
     """
     Read the current temperature, humidity and pressure from the BME68X sensor
 
@@ -98,8 +100,8 @@ def read_bme68x(address: int) -> dict[str, float | None]:
     :param address: the I2C address of the BME68X sensor
     :return: dictionary with keys: temperature, pressure, humidity, iaq, static_iaq, co2_equivalent, breath_voc_equivalent
     """
-
-    setup_bme68x(address)
+    if bme68x is None:
+        bme68x = setup_bme68x(address)
 
     data = {}
     
