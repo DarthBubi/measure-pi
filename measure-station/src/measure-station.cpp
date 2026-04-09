@@ -5,6 +5,9 @@
 #include <InfluxDb.h>
 #include <IotWebConf.h>
 #include <PubSubClient.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <Adafruit_BME280.h>
 #ifdef ESP8266
 #include <ESP8266HTTPUpdateServer.h>
 #elif defined(ESP32)
@@ -52,10 +55,13 @@ namespace cfg
   char mqtt_humidity_topic[STR_LEN] = "";
   char disable_status_led[NUMBER_LEN] = "0";
   char mqtt_dew_point_topic[STR_LEN] = "";
+  char bme280_enabled[NUMBER_LEN] = "0";
 }
 
 static char ledStatusValues[][NUMBER_LEN] = { "0", "1" };
 static char ledStatusNames[][STR_LEN] = { "Enabled", "Disabled" };
+static char bme280EnabledValues[][NUMBER_LEN] = { "0", "1" };
+static char bme280EnabledNames[][STR_LEN] = { "Disabled", "Enabled" };
 
 DHTesp dht;
 TempAndHumidity dht_val;
@@ -70,6 +76,11 @@ ESP8266HTTPUpdateServer httpUpdater;
 HTTPUpdateServer httpUpdater;
 #endif
 Influxdb* influx = nullptr;
+Adafruit_BME280 bme;
+Adafruit_Sensor *bme_temp = bme.getTemperatureSensor();
+Adafruit_Sensor *bme_humid = bme.getHumiditySensor();
+Adafruit_Sensor *bme_pressure = bme.getPressureSensor();
+sensors_event_t bme_temp_event, bme_humid_event, bme_pressure_event;
 PubSubClient mqtt_client(wifi_client);
 IotWebConf iotWebConf(intial_host_name, &dns_server, &server, initial_pw, CONFIG_VERSION);
 iotwebconf::ParameterGroup influxdb_group = iotwebconf::ParameterGroup("InfluxDB", "InfluxDB Settings");
@@ -85,6 +96,7 @@ iotwebconf::TextParameter mqtt_dew_point_topic_param = iotwebconf::TextParameter
 iotwebconf::TextParameter hostname_param = iotwebconf::TextParameter("Node (e.g. the room)", "node", cfg::node, STR_LEN);
 //iotwebconf::NumberParameter disable_status_led_param = iotwebconf::NumberParameter("Disable status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, "number", "0..1", "min='0' max='1' step='1'");
 iotwebconf::SelectParameter disable_status_led_param = iotwebconf::SelectParameter("Status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, (char*)ledStatusValues, (char*)ledStatusNames, sizeof(ledStatusValues) / NUMBER_LEN, STR_LEN);
+iotwebconf::SelectParameter bme280_enabled_param = iotwebconf::SelectParameter("BME280 Sensor", "bme280_enabled", cfg::bme280_enabled, NUMBER_LEN, (char*)bme280EnabledValues, (char*)bme280EnabledNames, sizeof(bme280EnabledValues) / NUMBER_LEN, STR_LEN);
 
 
 String pub_topic_temp, pub_topic_humid, pub_topic_dew_point, sub_topic;
@@ -158,6 +170,31 @@ void sensorDHT()
   }
 }
 
+void sensorBME280()
+{
+  bme_temp->getEvent(&bme_temp_event);
+  bme_humid->getEvent(&bme_humid_event);
+  bme_pressure->getEvent(&bme_pressure_event);
+  dew_point = dht.computeDewPoint(bme_temp_event.temperature, bme_humid_event.relative_humidity);
+
+  if (isnan(bme_temp_event.temperature) || isnan(bme_humid_event.relative_humidity) || isnan(bme_pressure_event.pressure))
+  {
+    Serial.println(F("BME280 couldn't be read"));
+  }
+  else
+  {
+    Serial.print("BME280 Temperature : ");
+    Serial.print(bme_temp_event.temperature);
+    Serial.println(" C");
+    Serial.print("BME280 Humidity : ");
+    Serial.print(bme_humid_event.relative_humidity);
+    Serial.println(" %");
+    Serial.print("BME280 Pressure : ");
+    Serial.print(bme_pressure_event.pressure);
+    Serial.println(" hPa");
+  }
+}
+
 void webserver_root()
 {
   String page_content = "<!DOCTYPE html><html>";
@@ -182,9 +219,20 @@ void webserver_root()
 
   page_content += "<body><div class=\"container\">";
   page_content += "<h1>Measure Station " + node + "</h1>";
-  page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">🌡️ Temperature</span><span class=\"sensor-value\">" + Float2String(dht_val.temperature) + " °C <span class=\"dot temp_ind\"></span></span></div>";
-  page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">💧 Humidity</span><span class=\"sensor-value\">" + Float2String(dht_val.humidity) + " % <span class=\"dot hum_ind\"></span></span></div>";
-  page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">❄️ Dew point</span><span class=\"sensor-value\">" + Float2String(dew_point) + " °C</span></div>";
+
+  if (atoi(cfg::bme280_enabled) == 1)
+  {
+    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">🌡️ Temperature</span><span class=\"sensor-value\">" + Float2String(bme_temp_event.temperature) + " °C</span></div>";
+    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">💧 Humidity</span><span class=\"sensor-value\">" + Float2String(bme_humid_event.relative_humidity) + " %</span></div>";
+    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">❄️ Dew point</span><span class=\"sensor-value\">" + Float2String(dew_point) + " °C</span></div>";
+    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">⏲️ Pressure</span><span class=\"sensor-value\">" + Float2String(bme_pressure_event.pressure) + " hPa</span></div>";
+  }
+  else
+  {
+    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">🌡️ Temperature</span><span class=\"sensor-value\">" + Float2String(dht_val.temperature) + " °C <span class=\"dot temp_ind\"></span></span></div>";
+    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">💧 Humidity</span><span class=\"sensor-value\">" + Float2String(dht_val.humidity) + " % <span class=\"dot hum_ind\"></span></span></div>";
+    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">❄️ Dew point</span><span class=\"sensor-value\">" + Float2String(dew_point) + " °C</span></div>";
+  }
   page_content += String(html_root_body_config_button);
   page_content += "</div>";
   page_content += String(html_root_body_end_tag);
@@ -300,6 +348,7 @@ void setup()
   mqtt_group.addItem(&mqtt_dew_point_topic_param);
   iotWebConf.addParameterGroup(&mqtt_group);
   iotWebConf.addSystemParameter(&disable_status_led_param);
+  iotWebConf.addSystemParameter(&bme280_enabled_param);
   iotWebConf.setConfigSavedCallback(&config_saved);
   iotWebConf.setupUpdateServer([](const char *updatePath)
                                { httpUpdater.setup(&server, updatePath); },
@@ -322,6 +371,7 @@ void setup()
     cfg::mqtt_humidity_topic[0] = '\0';
     cfg::disable_status_led[0] = '0';
     cfg::mqtt_dew_point_topic[0] = '\0';
+    cfg::bme280_enabled[0] = '0';
   }
   else
   {
@@ -345,6 +395,16 @@ void setup()
 
     if (atoi(cfg::disable_status_led) == 1)
       iotWebConf.disableBlink();
+    
+    uint8_t try_count = 0;
+    if (cfg::bme280_enabled[0] != '\0' && atoi(cfg::bme280_enabled) == 1)
+    {
+      while (!bme.begin(0x76) || try_count >= 5) {
+        Serial.println("Could not find a valid BME280 sensor, check wiring!");
+        try_count++;
+        delay(2000);
+      }
+    }
   }
 
   starttime = millis(); // store the start time
@@ -383,7 +443,10 @@ void loop()
   if ((millis() - starttime) > sampletime_ms)
   {
     starttime = millis(); // store the start time
-    sensorDHT();          // getting temperature and humidity
+    if (atoi(cfg::bme280_enabled) == 1)
+      sensorBME280();
+    else
+      sensorDHT();          // getting temperature and humidity
     Serial.println("------------------------------");
     if (iotWebConf.getState() == iotwebconf::OnLine)
       send_data_to_influxdb();
