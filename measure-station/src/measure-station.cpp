@@ -15,7 +15,7 @@
 #include <IotWebConfESP32HTTPUpdateServer.h>
 #endif
 
-#define CONFIG_VERSION "measure-station-v2.2"
+#define CONFIG_VERSION "measure-station-v2.3"
 #define STATUS_PIN LED_BUILTIN
 #define CONFIG_PIN D2
 #define STR_LEN 128
