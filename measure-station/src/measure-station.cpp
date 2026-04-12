@@ -175,7 +175,6 @@ void sensorBME280()
   bme_temp->getEvent(&bme_temp_event);
   bme_humid->getEvent(&bme_humid_event);
   bme_pressure->getEvent(&bme_pressure_event);
-  dew_point = dht.computeDewPoint(bme_temp_event.temperature, bme_humid_event.relative_humidity);
 
   if (isnan(bme_temp_event.temperature) || isnan(bme_humid_event.relative_humidity) || isnan(bme_pressure_event.pressure))
   {
@@ -183,6 +182,7 @@ void sensorBME280()
   }
   else
   {
+    dew_point = dht.computeDewPoint(bme_temp_event.temperature, bme_humid_event.relative_humidity);
     Serial.print("BME280 Temperature : ");
     Serial.print(bme_temp_event.temperature);
     Serial.println(" C");
@@ -251,8 +251,8 @@ void send_data_to_influxdb()
   data.addTag("node", node);
   data.addTag("device", device);
   data.addTag("sensor", "dht22");
-  data.addValue("temperature", dht_val.temperature);
-  data.addValue("humidity", dht_val.humidity);
+  data.addValue("temperature",  atoi(cfg::bme280_enabled) == 1 ? bme_temp_event.temperature : dht_val.temperature);
+  data.addValue("humidity", atoi(cfg::bme280_enabled) == 1 ? bme_humid_event.relative_humidity : dht_val.humidity);
   data.addValue("dew_point", dew_point);
   influx->prepare(data);
 
@@ -275,7 +275,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 
   if (strcmp(msg, "temperature") == 0)
   {
-    mqtt_msg = Float2String(dht_val.temperature);
+    mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? tFloat2String(bme_temp_event.temperature) : tFloat2String(dht_val.temperature);
     boolean success = mqtt_client.publish(pub_topic_temp.c_str(), mqtt_msg.c_str(), true);
 
     if (!success)
@@ -283,7 +283,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   }
   else if (strcmp(msg, "humidity") == 0)
   {
-    mqtt_msg = Float2String(dht_val.humidity);
+    mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? tFloat2String(bme_humid_event.relative_humidity) : tFloat2String(dht_val.humidity);
     boolean success = mqtt_client.publish(pub_topic_humid.c_str(), mqtt_msg.c_str(), true);
 
     if (!success)
@@ -458,13 +458,13 @@ void loop()
         reconnect();
       }
 
-      mqtt_msg = Float2String(dht_val.temperature);
+      mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? Float2String(bme_temp_event.temperature) : Float2String(dht_val.temperature);
       boolean success = mqtt_client.publish(pub_topic_temp.c_str(), mqtt_msg.c_str(), true);
 
       if (!success)
         Serial.println("publishing temperature via mqtt failed.");
 
-      mqtt_msg = Float2String(dht_val.humidity);
+      mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? Float2String(bme_temp_event.humidity) : Float2String(dht_val.humidity);
       success = mqtt_client.publish(pub_topic_humid.c_str(), mqtt_msg.c_str(), true);
 
       if (!success)
