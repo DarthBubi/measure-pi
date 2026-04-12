@@ -56,6 +56,7 @@ namespace cfg
   char disable_status_led[NUMBER_LEN] = "0";
   char mqtt_dew_point_topic[STR_LEN] = "";
   char bme280_enabled[NUMBER_LEN] = "0";
+  char temp_offset[NUMBER_LEN] = "0.0";
 }
 
 static char ledStatusValues[][NUMBER_LEN] = { "0", "1" };
@@ -97,6 +98,7 @@ iotwebconf::TextParameter hostname_param = iotwebconf::TextParameter("Node (e.g.
 //iotwebconf::NumberParameter disable_status_led_param = iotwebconf::NumberParameter("Disable status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, "number", "0..1", "min='0' max='1' step='1'");
 iotwebconf::SelectParameter disable_status_led_param = iotwebconf::SelectParameter("Status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, (char*)ledStatusValues, (char*)ledStatusNames, sizeof(ledStatusValues) / NUMBER_LEN, STR_LEN);
 iotwebconf::SelectParameter bme280_enabled_param = iotwebconf::SelectParameter("BME280 Sensor", "bme280_enabled", cfg::bme280_enabled, NUMBER_LEN, (char*)bme280EnabledValues, (char*)bme280EnabledNames, sizeof(bme280EnabledValues) / NUMBER_LEN, STR_LEN);
+iotwebconf::NumberParameter temp_offset_param = iotwebconf::NumberParameter("Temperature Offset", "temp_offset", cfg::temp_offset, NUMBER_LEN, "number", "-5..5", "min='-5' max='5' step='0.1'");
 
 
 String pub_topic_temp, pub_topic_humid, pub_topic_dew_point, sub_topic;
@@ -160,6 +162,7 @@ void sensorDHT()
   else
   {
     dht_val = th;
+    dht_val.temperature += atof(cfg::temp_offset);
     dew_point = dht.computeDewPoint(dht_val.temperature, dht_val.humidity);
     Serial.print("Humidity    : ");
     Serial.print(dht_val.humidity);
@@ -182,6 +185,7 @@ void sensorBME280()
   }
   else
   {
+    bme_temp_event.temperature += atof(cfg::temp_offset);
     dew_point = dht.computeDewPoint(bme_temp_event.temperature, bme_humid_event.relative_humidity);
     Serial.print("BME280 Temperature : ");
     Serial.print(bme_temp_event.temperature);
@@ -275,7 +279,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 
   if (strcmp(msg, "temperature") == 0)
   {
-    mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? tFloat2String(bme_temp_event.temperature) : tFloat2String(dht_val.temperature);
+    mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? Float2String(bme_temp_event.temperature) : Float2String(dht_val.temperature);
     boolean success = mqtt_client.publish(pub_topic_temp.c_str(), mqtt_msg.c_str(), true);
 
     if (!success)
@@ -283,7 +287,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   }
   else if (strcmp(msg, "humidity") == 0)
   {
-    mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? tFloat2String(bme_humid_event.relative_humidity) : tFloat2String(dht_val.humidity);
+    mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? Float2String(bme_humid_event.relative_humidity) : Float2String(dht_val.humidity);
     boolean success = mqtt_client.publish(pub_topic_humid.c_str(), mqtt_msg.c_str(), true);
 
     if (!success)
@@ -349,6 +353,7 @@ void setup()
   iotWebConf.addParameterGroup(&mqtt_group);
   iotWebConf.addSystemParameter(&disable_status_led_param);
   iotWebConf.addSystemParameter(&bme280_enabled_param);
+  iotWebConf.addSystemParameter(&temp_offset_param);
   iotWebConf.setConfigSavedCallback(&config_saved);
   iotWebConf.setupUpdateServer([](const char *updatePath)
                                { httpUpdater.setup(&server, updatePath); },
@@ -372,6 +377,7 @@ void setup()
     cfg::disable_status_led[0] = '0';
     cfg::mqtt_dew_point_topic[0] = '\0';
     cfg::bme280_enabled[0] = '0';
+    cfg::temp_offset[0] = '0';
   }
   else
   {
@@ -464,7 +470,7 @@ void loop()
       if (!success)
         Serial.println("publishing temperature via mqtt failed.");
 
-      mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? Float2String(bme_temp_event.humidity) : Float2String(dht_val.humidity);
+      mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? Float2String(bme_humid_event.relative_humidity) : Float2String(dht_val.humidity);
       success = mqtt_client.publish(pub_topic_humid.c_str(), mqtt_msg.c_str(), true);
 
       if (!success)
