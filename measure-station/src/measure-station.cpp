@@ -254,7 +254,7 @@ void send_data_to_influxdb()
   node.replace(" ", "_"); // Replace all spaces with underscores
   data.addTag("node", node);
   data.addTag("device", device);
-  data.addTag("sensor", "dht22");
+  data.addTag("sensor",  atoi(cfg::bme280_enabled) == 1 ? "bme280" : "dht22");
   data.addValue("temperature",  atoi(cfg::bme280_enabled) == 1 ? bme_temp_event.temperature : dht_val.temperature);
   data.addValue("humidity", atoi(cfg::bme280_enabled) == 1 ? bme_humid_event.relative_humidity : dht_val.humidity);
   data.addValue("dew_point", dew_point);
