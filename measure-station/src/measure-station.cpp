@@ -295,15 +295,16 @@ void send_data_to_influxdb()
 {
   String device = "esp8266-";
   device += String(ESP.getChipId());
+  const bool useBme280 = atoi(cfg::bme280_enabled) == 1;
 
   InfluxData data("indoor_temperature");
   String node = cfg::node;
   node.replace(" ", "_"); // Replace all spaces with underscores
   data.addTag("node", node);
   data.addTag("device", device);
-  data.addTag("sensor",  atoi(cfg::bme280_enabled) == 1 ? "bme280" : "dht22");
-  data.addValue("temperature",  atoi(cfg::bme280_enabled) == 1 ? bme_temp_event.temperature : dht_val.temperature);
-  data.addValue("humidity", atoi(cfg::bme280_enabled) == 1 ? bme_humid_event.relative_humidity : dht_val.humidity);
+  data.addTag("sensor",  useBme280 ? "bme280" : "dht22");
+  data.addValue("temperature",  useBme280 ? bme_temp_event.temperature : dht_val.temperature);
+  data.addValue("humidity", useBme280 ? bme_humid_event.relative_humidity : dht_val.humidity);
   data.addValue("dew_point", dew_point);
   influx->prepare(data);
 
@@ -324,9 +325,11 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 
   msg[length] = '\0';
 
+  const bool useBme280 = atoi(cfg::bme280_enabled) == 1;
+
   if (strcmp(msg, "temperature") == 0)
   {
-    mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? Float2String(bme_temp_event.temperature) : Float2String(dht_val.temperature);
+    mqtt_msg = useBme280 ? Float2String(bme_temp_event.temperature) : Float2String(dht_val.temperature);
     boolean success = mqtt_client.publish(pub_topic_temp.c_str(), mqtt_msg.c_str(), true);
 
     if (!success)
@@ -334,7 +337,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   }
   else if (strcmp(msg, "humidity") == 0)
   {
-    mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? Float2String(bme_humid_event.relative_humidity) : Float2String(dht_val.humidity);
+    mqtt_msg = useBme280 ? Float2String(bme_humid_event.relative_humidity) : Float2String(dht_val.humidity);
     boolean success = mqtt_client.publish(pub_topic_humid.c_str(), mqtt_msg.c_str(), true);
 
     if (!success)
@@ -481,6 +484,7 @@ void setup()
 
 void loop()
 {
+  const bool useBme280 = atoi(cfg::bme280_enabled) == 1;
   if (need_mdns_setup)
   {
     if (!MDNS.begin(cfg::hostname, WiFi.localIP()))
@@ -496,7 +500,7 @@ void loop()
   if ((millis() - starttime) > sampletime_ms)
   {
     starttime = millis(); // store the start time
-    if (atoi(cfg::bme280_enabled) == 1)
+    if (useBme280)
       sensorBME280();
     else
       sensorDHT();          // getting temperature and humidity
@@ -511,13 +515,13 @@ void loop()
         reconnect();
       }
 
-      mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? Float2String(bme_temp_event.temperature) : Float2String(dht_val.temperature);
+      mqtt_msg = useBme280 ? Float2String(bme_temp_event.temperature) : Float2String(dht_val.temperature);
       boolean success = mqtt_client.publish(pub_topic_temp.c_str(), mqtt_msg.c_str(), true);
 
       if (!success)
         Serial.println("publishing temperature via mqtt failed.");
 
-      mqtt_msg = atoi(cfg::bme280_enabled) == 1 ? Float2String(bme_humid_event.relative_humidity) : Float2String(dht_val.humidity);
+      mqtt_msg = useBme280 ? Float2String(bme_humid_event.relative_humidity) : Float2String(dht_val.humidity);
       success = mqtt_client.publish(pub_topic_humid.c_str(), mqtt_msg.c_str(), true);
 
       if (!success)
