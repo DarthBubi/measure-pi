@@ -399,7 +399,7 @@ void setup()
     uint8_t try_count = 0;
     if (cfg::bme280_enabled[0] != '\0' && atoi(cfg::bme280_enabled) == 1)
     {
-      while (!bme.begin(0x76) || try_count >= 5) {
+      while (!bme.begin(0x76) || try_count <= 5) {
         Serial.println("Could not find a valid BME280 sensor, check wiring!");
         try_count++;
         delay(2000);
