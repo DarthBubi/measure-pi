@@ -454,7 +454,7 @@ void loop()
     else
       sensorDHT();          // getting temperature and humidity
     Serial.println("------------------------------");
-    if (iotWebConf.getState() == iotwebconf::OnLine)
+    if (iotWebConf.getState() == iotwebconf::OnLine && cfg::influxdb_host[0] != '\0')
       send_data_to_influxdb();
 
     if (cfg::mqtt_server[0] != '\0')
