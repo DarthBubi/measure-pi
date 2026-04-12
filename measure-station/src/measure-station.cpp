@@ -82,6 +82,7 @@ ESP8266HTTPUpdateServer httpUpdater;
 HTTPUpdateServer httpUpdater;
 #endif
 Influxdb* influx = nullptr;
+InfluxData influx_data("indoor_temperature");
 Adafruit_BME280 bme;
 Adafruit_Sensor *bme_temp = bme.getTemperatureSensor();
 Adafruit_Sensor *bme_humid = bme.getHumiditySensor();
@@ -175,6 +176,21 @@ void formatDisplayName(char *destination, size_t destinationSize, const char *so
       capitalizeNext = destination[index] == ' ';
     }
   }
+}
+
+void configureInfluxData()
+{
+  char device[24];
+  char node[STR_LEN];
+
+  snprintf(device, sizeof(device), "esp8266-%u", ESP.getChipId());
+  formatMqttNode(node, sizeof(node), cfg::node);
+
+  influx_data.clearFields();
+  influx_data.clearTags();
+  influx_data.addTag("node", node);
+  influx_data.addTag("device", device);
+  influx_data.addTag("sensor", atoi(cfg::bme280_enabled) == 1 ? "bme280" : "dht22");
 }
 
 void sendSensorRow(const char *label, float value, const char *unit, const char *indicatorClass = nullptr)
@@ -297,20 +313,13 @@ void webserver_root()
 
 void send_data_to_influxdb()
 {
-  String device = "esp8266-";
-  device += String(ESP.getChipId());
   const bool useBme280 = atoi(cfg::bme280_enabled) == 1;
 
-  InfluxData data("indoor_temperature");
-  String node = cfg::node;
-  node.replace(" ", "_"); // Replace all spaces with underscores
-  data.addTag("node", node);
-  data.addTag("device", device);
-  data.addTag("sensor",  useBme280 ? "bme280" : "dht22");
-  data.addValue("temperature",  useBme280 ? bme_temp_event.temperature : dht_val.temperature);
-  data.addValue("humidity", useBme280 ? bme_humid_event.relative_humidity : dht_val.humidity);
-  data.addValue("dew_point", dew_point);
-  influx->prepare(data);
+  influx_data.clearFields();
+  influx_data.addValue("temperature",  useBme280 ? bme_temp_event.temperature : dht_val.temperature);
+  influx_data.addValue("humidity", useBme280 ? bme_humid_event.relative_humidity : dht_val.humidity);
+  influx_data.addValue("dew_point", dew_point);
+  influx->prepare(influx_data);
 
   boolean success = influx->write();
   if (!success)
@@ -460,6 +469,7 @@ void setup()
     }
     influx = new Influxdb(cfg::influxdb_host, 8086);
     influx->setDb(cfg::influxdb_database);
+    configureInfluxData();
     mqtt_client.setServer(cfg::mqtt_server, 1883);
     mqtt_client.setCallback(mqtt_callback);
     char mqttNode[STR_LEN];
