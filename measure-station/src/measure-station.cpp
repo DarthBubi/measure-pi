@@ -21,7 +21,8 @@
 #define STR_LEN 128
 #define NUMBER_LEN 32
 
-const char *html_root_header_w_style PROGMEM =
+const char html_root_open_tag[] PROGMEM = "<!DOCTYPE html><html>";
+const char html_root_header_w_style[] PROGMEM =
     "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
     "<link rel=\"icon\" href=\"data:,\">"
     "<style>"
@@ -33,10 +34,14 @@ const char *html_root_header_w_style PROGMEM =
     ".sensor-value { font-size: 2em; font-weight: bold; color: #222; }"
     ".dot {height: 20px; width: 20px; border-radius: 50%; display: inline-block; margin-left: 10px; border: 1px solid #ccc;}"
     ".temp_ind {background-color: ";
-
-const char *html_root_header_end PROGMEM = "</style></head>";
-const char *html_root_body_config_button PROGMEM = "<a href=\"config\"><button type=\"button\">Config</button></a>";
-const char *html_root_body_end_tag PROGMEM = "</body></html>";
+  const char html_root_header_dynamic_style[] PROGMEM = "%s;} .hum_ind {background-color: %s;}";
+  const char html_root_header_end[] PROGMEM = "</style></head>";
+  const char html_root_body_start[] PROGMEM = "<body><div class=\"container\"><h1>Measure Station %s</h1>";
+  const char html_sensor_row[] PROGMEM = "<div class=\"sensor-row\"><span class=\"sensor-label\">%s</span><span class=\"sensor-value\">%s %s</span></div>";
+  const char html_sensor_row_with_indicator[] PROGMEM = "<div class=\"sensor-row\"><span class=\"sensor-label\">%s</span><span class=\"sensor-value\">%s %s <span class=\"dot %s\"></span></span></div>";
+  const char html_root_body_config_button[] PROGMEM = "<a href=\"config\"><button type=\"button\">Config</button></a>";
+  const char html_root_body_container_end[] PROGMEM = "</div>";
+  const char html_root_body_end_tag[] PROGMEM = "</body></html>";
 
 const char intial_host_name[] = "measure-station-test";
 const char initial_pw[] = "test1234";
@@ -109,8 +114,8 @@ unsigned long sampletime_ms = 30000;
 bool need_reset = false;
 bool need_mdns_setup = false;
 
-const String red = "#f00";
-const String green = "#0f0";
+const char red[] = "#f00";
+const char green[] = "#0f0";
 
 // TODO: needs to be finished
 void debug_out(const String &text, const int level, const bool linebreak)
@@ -136,18 +141,55 @@ String Float2String(float value)
   return s;
 }
 
-void captialize(String &s)
+void formatFloat(char *buffer, size_t bufferSize, float value)
 {
-  int a;
-  int b = -1;
-  do
+  dtostrf(value, 0, 2, buffer);
+  buffer[bufferSize - 1] = '\0';
+}
+
+void formatDisplayName(char *destination, size_t destinationSize, const char *source)
+{
+  if (destinationSize == 0)
   {
-    a = b + 1;
-    b = s.indexOf(0x20, a);
-    String tmp = s.substring(a, b - a);
-    tmp[0] = toupper(tmp[0]);
-    s.replace(s.substring(a, b - a), tmp);
-  } while (b != -1);
+    return;
+  }
+
+  strncpy(destination, source, destinationSize - 1);
+  destination[destinationSize - 1] = '\0';
+
+  bool capitalizeNext = true;
+  for (size_t index = 0; destination[index] != '\0'; ++index)
+  {
+    unsigned char current = static_cast<unsigned char>(destination[index]);
+    if (capitalizeNext && isalpha(current))
+    {
+      destination[index] = static_cast<char>(toupper(current));
+      capitalizeNext = false;
+    }
+    else
+    {
+      capitalizeNext = destination[index] == ' ';
+    }
+  }
+}
+
+void sendSensorRow(const char *label, float value, const char *unit, const char *indicatorClass = nullptr)
+{
+  char valueBuffer[16];
+  char rowBuffer[256];
+
+  formatFloat(valueBuffer, sizeof(valueBuffer), value);
+
+  if (indicatorClass == nullptr)
+  {
+    snprintf_P(rowBuffer, sizeof(rowBuffer), html_sensor_row, label, valueBuffer, unit);
+  }
+  else
+  {
+    snprintf_P(rowBuffer, sizeof(rowBuffer), html_sensor_row_with_indicator, label, valueBuffer, unit, indicatorClass);
+  }
+
+  server.sendContent(rowBuffer);
 }
 
 void sensorDHT()
@@ -201,10 +243,14 @@ void sensorBME280()
 
 void webserver_root()
 {
-  String page_content = "<!DOCTYPE html><html>";
-  String colour_h, colour_te;
-  String node = cfg::node;
-  captialize(node);
+  char displayNode[STR_LEN];
+  char headerBuffer[STR_LEN + 64];
+  char styleBuffer[64];
+  const bool useBme280 = atoi(cfg::bme280_enabled) == 1;
+  const char *colour_h;
+  const char *colour_te;
+
+  formatDisplayName(displayNode, sizeof(displayNode), cfg::node);
 
   if (dht.isTooDry(dht_val.temperature, dht_val.humidity) || dht.isTooHumid(dht_val.temperature, dht_val.humidity))
     colour_h = red;
@@ -216,32 +262,33 @@ void webserver_root()
   else
     colour_te = green;
 
-  page_content += String(html_root_header_w_style);
-  page_content += colour_te + ";}"; // .temp_ind
-  page_content += ".hum_ind {background-color: " + colour_h + ";}";
-  page_content += String(html_root_header_end);
+  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server.send(200, "text/html; charset=utf-8", "");
+  server.sendContent_P(html_root_open_tag);
+  server.sendContent_P(html_root_header_w_style);
+  snprintf_P(styleBuffer, sizeof(styleBuffer), html_root_header_dynamic_style, colour_te, colour_h);
+  server.sendContent(styleBuffer);
+  server.sendContent_P(html_root_header_end);
+  snprintf_P(headerBuffer, sizeof(headerBuffer), html_root_body_start, displayNode);
+  server.sendContent(headerBuffer);
 
-  page_content += "<body><div class=\"container\">";
-  page_content += "<h1>Measure Station " + node + "</h1>";
-
-  if (atoi(cfg::bme280_enabled) == 1)
+  if (useBme280)
   {
-    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">🌡️ Temperature</span><span class=\"sensor-value\">" + Float2String(bme_temp_event.temperature) + " °C</span></div>";
-    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">💧 Humidity</span><span class=\"sensor-value\">" + Float2String(bme_humid_event.relative_humidity) + " %</span></div>";
-    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">❄️ Dew point</span><span class=\"sensor-value\">" + Float2String(dew_point) + " °C</span></div>";
-    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">⏲️ Pressure</span><span class=\"sensor-value\">" + Float2String(bme_pressure_event.pressure) + " hPa</span></div>";
+    sendSensorRow("🌡️ Temperature", bme_temp_event.temperature, "°C");
+    sendSensorRow("💧 Humidity", bme_humid_event.relative_humidity, "%");
+    sendSensorRow("❄️ Dew point", dew_point, "°C");
+    sendSensorRow("⏲️ Pressure", bme_pressure_event.pressure, "hPa");
   }
   else
   {
-    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">🌡️ Temperature</span><span class=\"sensor-value\">" + Float2String(dht_val.temperature) + " °C <span class=\"dot temp_ind\"></span></span></div>";
-    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">💧 Humidity</span><span class=\"sensor-value\">" + Float2String(dht_val.humidity) + " % <span class=\"dot hum_ind\"></span></span></div>";
-    page_content += "<div class=\"sensor-row\"><span class=\"sensor-label\">❄️ Dew point</span><span class=\"sensor-value\">" + Float2String(dew_point) + " °C</span></div>";
+    sendSensorRow("🌡️ Temperature", dht_val.temperature, "°C", "temp_ind");
+    sendSensorRow("💧 Humidity", dht_val.humidity, "%", "hum_ind");
+    sendSensorRow("❄️ Dew point", dew_point, "°C");
   }
-  page_content += String(html_root_body_config_button);
-  page_content += "</div>";
-  page_content += String(html_root_body_end_tag);
-
-  server.send(200, "text/html; charset=utf-8", page_content);
+  server.sendContent_P(html_root_body_config_button);
+  server.sendContent_P(html_root_body_container_end);
+  server.sendContent_P(html_root_body_end_tag);
+  server.sendContent("");
 }
 
 void send_data_to_influxdb()
