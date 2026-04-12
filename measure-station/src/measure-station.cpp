@@ -15,7 +15,7 @@
 #include <IotWebConfESP32HTTPUpdateServer.h>
 #endif
 
-#define CONFIG_VERSION "measure-station-v2.3"
+#define CONFIG_VERSION "measure-station-v2.4"
 #define STATUS_PIN LED_BUILTIN
 #define CONFIG_PIN D2
 #define STR_LEN 128
@@ -104,10 +104,7 @@ iotwebconf::TextParameter hostname_param = iotwebconf::TextParameter("Node (e.g.
 iotwebconf::SelectParameter disable_status_led_param = iotwebconf::SelectParameter("Status LED", "disable_status_led", cfg::disable_status_led, NUMBER_LEN, (char*)ledStatusValues, (char*)ledStatusNames, sizeof(ledStatusValues) / NUMBER_LEN, STR_LEN);
 iotwebconf::SelectParameter bme280_enabled_param = iotwebconf::SelectParameter("BME280 Sensor", "bme280_enabled", cfg::bme280_enabled, NUMBER_LEN, (char*)bme280EnabledValues, (char*)bme280EnabledNames, sizeof(bme280EnabledValues) / NUMBER_LEN, STR_LEN);
 iotwebconf::NumberParameter temp_offset_param = iotwebconf::NumberParameter("Temperature Offset", "temp_offset", cfg::temp_offset, NUMBER_LEN, "number", "-5..5", "min='-5' max='5' step='0.1'");
-
-
-String pub_topic_temp, pub_topic_humid, pub_topic_dew_point, sub_topic;
-String mqtt_msg;
+char sub_topic[STR_LEN + 32] = "";
 
 unsigned long starttime;
 unsigned long sampletime_ms = 30000;
@@ -129,22 +126,29 @@ void debug_out(const String &text, const int level, const bool linebreak)
   }
 }
 
-String Float2String(float value)
-{
-  // Convert a float to String with two decimals.
-  char temp[15];
-  String s;
-
-  dtostrf(value, 13, 2, temp);
-  s = String(temp);
-  s.trim();
-  return s;
-}
-
 void formatFloat(char *buffer, size_t bufferSize, float value)
 {
   dtostrf(value, 0, 2, buffer);
   buffer[bufferSize - 1] = '\0';
+}
+
+void formatMqttNode(char *destination, size_t destinationSize, const char *source)
+{
+  if (destinationSize == 0)
+  {
+    return;
+  }
+
+  strncpy(destination, source, destinationSize - 1);
+  destination[destinationSize - 1] = '\0';
+
+  for (size_t index = 0; destination[index] != '\0'; ++index)
+  {
+    if (destination[index] == ' ')
+    {
+      destination[index] = '_';
+    }
+  }
 }
 
 void formatDisplayName(char *destination, size_t destinationSize, const char *source)
@@ -316,9 +320,29 @@ void send_data_to_influxdb()
   }
 }
 
+boolean publishMqttValue(const char *topic, float value)
+{
+  if (topic[0] == '\0')
+  {
+    return false;
+  }
+
+  char payload[16];
+  formatFloat(payload, sizeof(payload), value);
+  return mqtt_client.publish(topic, payload, true);
+}
+
 void mqtt_callback(char *topic, byte *payload, unsigned int length)
 {
-  char msg[length + 1];
+  char msg[16];
+
+  (void)topic;
+
+  if (length >= sizeof(msg))
+  {
+    Serial.println("MQTT request too long.");
+    return;
+  }
 
   for (unsigned int i = 0; i < length; i++)
     msg[i] = static_cast<char>(payload[i]);
@@ -329,24 +353,21 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 
   if (strcmp(msg, "temperature") == 0)
   {
-    mqtt_msg = useBme280 ? Float2String(bme_temp_event.temperature) : Float2String(dht_val.temperature);
-    boolean success = mqtt_client.publish(pub_topic_temp.c_str(), mqtt_msg.c_str(), true);
+    boolean success = publishMqttValue(cfg::mqtt_temperature_topic, useBme280 ? bme_temp_event.temperature : dht_val.temperature);
 
     if (!success)
       Serial.println("publishing via mqtt failed.");
   }
   else if (strcmp(msg, "humidity") == 0)
   {
-    mqtt_msg = useBme280 ? Float2String(bme_humid_event.relative_humidity) : Float2String(dht_val.humidity);
-    boolean success = mqtt_client.publish(pub_topic_humid.c_str(), mqtt_msg.c_str(), true);
+    boolean success = publishMqttValue(cfg::mqtt_humidity_topic, useBme280 ? bme_humid_event.relative_humidity : dht_val.humidity);
 
     if (!success)
       Serial.println("publishing via mqtt failed.");
   }
   else if (strcmp(msg, "dew_point") == 0)
   {
-    mqtt_msg = Float2String(dew_point);
-    boolean success = mqtt_client.publish(pub_topic_dew_point.c_str(), mqtt_msg.c_str(), true);
+    boolean success = publishMqttValue(cfg::mqtt_dew_point_topic, dew_point);
 
     if (!success)
       Serial.println("publishing via mqtt failed.");
@@ -368,7 +389,7 @@ void reconnect()
     return;
   }
 
-  mqtt_client.subscribe(sub_topic.c_str());
+  mqtt_client.subscribe(sub_topic);
   Serial.println("MQTT connected.");
 }
 
@@ -441,13 +462,9 @@ void setup()
     influx->setDb(cfg::influxdb_database);
     mqtt_client.setServer(cfg::mqtt_server, 1883);
     mqtt_client.setCallback(mqtt_callback);
-    // TODO: fix hack to replace one space
-    String node = cfg::node;
-    node.setCharAt(node.indexOf(0x20), 0x5f);
-    pub_topic_temp = cfg::mqtt_temperature_topic;
-    pub_topic_humid = cfg::mqtt_humidity_topic;
-    pub_topic_dew_point = cfg::mqtt_dew_point_topic;
-    sub_topic = "/home/measure/" + node + "/get";
+    char mqttNode[STR_LEN];
+    formatMqttNode(mqttNode, sizeof(mqttNode), cfg::node);
+    snprintf(sub_topic, sizeof(sub_topic), "/home/measure/%s/get", mqttNode);
 
     if (atoi(cfg::disable_status_led) == 1)
       iotWebConf.disableBlink();
@@ -515,20 +532,17 @@ void loop()
         reconnect();
       }
 
-      mqtt_msg = useBme280 ? Float2String(bme_temp_event.temperature) : Float2String(dht_val.temperature);
-      boolean success = mqtt_client.publish(pub_topic_temp.c_str(), mqtt_msg.c_str(), true);
+      boolean success = publishMqttValue(cfg::mqtt_temperature_topic, useBme280 ? bme_temp_event.temperature : dht_val.temperature);
 
       if (!success)
         Serial.println("publishing temperature via mqtt failed.");
 
-      mqtt_msg = useBme280 ? Float2String(bme_humid_event.relative_humidity) : Float2String(dht_val.humidity);
-      success = mqtt_client.publish(pub_topic_humid.c_str(), mqtt_msg.c_str(), true);
+      success = publishMqttValue(cfg::mqtt_humidity_topic, useBme280 ? bme_humid_event.relative_humidity : dht_val.humidity);
 
       if (!success)
         Serial.println("publishing humidity via mqtt failed.");
 
-      mqtt_msg = Float2String(dew_point);
-      success = mqtt_client.publish(pub_topic_dew_point.c_str(), mqtt_msg.c_str(), true);
+      success = publishMqttValue(cfg::mqtt_dew_point_topic, dew_point);
 
       if (!success)
         Serial.println("publishing dew point via mqtt failed.");
