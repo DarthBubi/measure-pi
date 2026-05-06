@@ -485,13 +485,16 @@ void setup()
       while (!bme.begin(0x76) || try_count < 5) {
         Serial.println("Could not find a valid BME280 sensor, check wiring!");
         try_count++;
-        delay(2000);
+        delay(5000);
       }
+    }
+    else
+    {
+      dht.setup(13, DHTesp::DHT22);
     }
   }
 
   starttime = millis(); // store the start time
-  dht.setup(13, DHTesp::DHT22);
   Serial.print("\n");
   Serial.println("ChipId: ");
   Serial.println(ESP.getChipId());
